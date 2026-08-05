@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kltyton.autoseamblend.neoforge.compat.ctm_mod.mixin",
+  "plugin": "com.kltyton.autoseamblend.neoforge.mixin.OptionalEngineMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "AbstractConnectedTextureBlockStateModelAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

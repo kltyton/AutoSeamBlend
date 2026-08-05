@@ -1,0 +1,87 @@
+modLoader = "javafml"
+loaderVersion = "${neoforge_loader_version_range}"
+license = "${license}"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${version}"
+displayName = "${mod_name}"
+authors = "${mod_author}"
+description = '''${description}'''
+
+[[mixins]]
+config = "autoseamblend.common.minecraft.mixins.json"
+
+[[mixins]]
+config = "autoseamblend.neoforge.mixins.json"
+
+[[mixins]]
+config = "autoseamblend.neoforge.continuity.common.mixins.json"
+
+[[mixins]]
+config = "autoseamblend.neoforge.ctm.mixins.json"
+
+[[mixins]]
+config = "autoseamblend.neoforge.fusion.common.mixins.json"
+
+[[mixins]]
+config = "autoseamblend.neoforge.athena.common.mixins.json"
+
+[[mixins]]
+config = "autoseamblend.neoforge.athena.mixins.json"
+
+[[dependencies.${mod_id}]]
+modId = "neoforge"
+type = "required"
+versionRange = "[${neoforge_version},)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.${mod_id}]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.${mod_id}]]
+modId = "fzzy_config"
+type = "required"
+versionRange = "[0.7.6,)"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies.${mod_id}]]
+modId = "uilib"
+type = "required"
+versionRange = "[${uilib_version},)"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies.${mod_id}]]
+modId = "continuity"
+type = "optional"
+versionRange = "[3.0.1-0.0.8,)"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies.${mod_id}]]
+modId = "ctm"
+type = "optional"
+versionRange = "[26.1.2.2,)"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies.${mod_id}]]
+modId = "fusion"
+type = "optional"
+versionRange = "[1.3.12,)"
+ordering = "AFTER"
+side = "CLIENT"
+
+[[dependencies.${mod_id}]]
+modId = "athena"
+type = "optional"
+versionRange = "[4.7.3,)"
+ordering = "AFTER"
+side = "CLIENT"

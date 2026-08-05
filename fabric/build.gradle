@@ -1,0 +1,86 @@
+plugins {
+    id 'multiloader-loader'
+    id 'net.fabricmc.fabric-loom'
+}
+
+def validationEngine = providers.gradleProperty('autoseamblend_fabric_validation_engine').getOrElse('continuity')
+def validationEngineDependencies = [
+    continuity: "maven.modrinth:continuity:${continuity_fabric_version}",
+    fusion    : "maven.modrinth:fusion-connected-textures:${fusion_fabric_version}",
+    athena    : "curse.maven:athena-841890:${athena_fabric_file}"
+]
+if (!validationEngineDependencies.containsKey(validationEngine)) {
+    throw new GradleException("Unknown AutoSeamBlend Fabric validation engine '${validationEngine}'. Expected one of: ${validationEngineDependencies.keySet().join(', ')}")
+}
+
+dependencies {
+    minecraft("com.mojang:minecraft:${minecraft_version}")
+    implementation("net.fabricmc:fabric-loader:${fabric_loader_version}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${fabric_version}")
+
+    // Required player dependencies. These remain external mods and are never bundled.
+    implementation("net.fabricmc:fabric-language-kotlin:${fabric_language_kotlin_version}")
+    implementation("me.fzzyhmstrs:fzzy_config:${fzzy_config_fabric_version}")
+
+    // UILib is bundled through Fabric Loom's native non-transitive Jar-in-Jar configuration.
+    implementation("com.daqem.uilib:uilib-fabric:${uilib_version}")
+    include("com.daqem.uilib:uilib-fabric:${uilib_version}")
+
+    // This module uses Loom's no-remap plugin because all modules share Mojang
+    // names. Normal compile/runtime configurations therefore provide the
+    // optional external mods to the development client without bundling them.
+    compileOnly("maven.modrinth:continuity:${continuity_fabric_version}")
+    compileOnly("maven.modrinth:fusion-connected-textures:${fusion_fabric_version}")
+    compileOnly("curse.maven:athena-841890:${athena_fabric_file}")
+    runtimeOnly(validationEngineDependencies[validationEngine])
+
+    testImplementation platform('org.junit:junit-bom:5.10.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    // Exact M6 adapter target for real loader/holder characterization; test scope only, never bundled.
+    testImplementation("maven.modrinth:continuity:${continuity_fabric_version}")
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}
+
+loom {
+    def aw = project(':common').file("src/main/resources/${mod_id}.accesswidener")
+    if (aw.exists()) {
+        accessWidenerPath.set(aw)
+    }
+    runs {
+        client {
+            client()
+            setConfigName('Fabric Client')
+            ideConfigGenerated(true)
+            runDir('runs/client')
+        }
+        server {
+            server()
+            setConfigName('Fabric Server')
+            ideConfigGenerated(true)
+            runDir('runs/server')
+        }
+    }
+}
+
+// Implement mcgradleconventions loader attribute
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements', 'includeInternal', 'modCompileClasspath'].each { variant ->
+    configurations.named(variant) {
+        attributes {
+            attribute(loaderAttribute, 'fabric')
+        }
+    }
+}
+sourceSets.configureEach {
+    [it.compileClasspathConfigurationName, it.runtimeClasspathConfigurationName].each { variant->
+        configurations.named(variant) {
+            attributes {
+                attribute(loaderAttribute, 'fabric')
+            }
+        }
+    }
+}

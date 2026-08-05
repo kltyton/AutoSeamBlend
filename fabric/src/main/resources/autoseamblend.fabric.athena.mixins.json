@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kltyton.autoseamblend.fabric.compat.athena.mixin",
+  "plugin": "com.kltyton.autoseamblend.fabric.compat.athena.bootstrap.AthenaMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "AthenaBakedModelAccessor",
+    "ConnectedBlockModelAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

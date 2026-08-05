@@ -1,0 +1,97 @@
+plugins {
+    id 'multiloader-loader'
+    id 'net.neoforged.moddev'
+}
+
+def validationEngine = providers.gradleProperty('autoseamblend_validation_engine').getOrElse('continuity')
+def validationEngineDependencies = [
+    continuity: "curse.maven:neocontinuity-1377279:${neocontinuity_neoforge_file}",
+    ctm       : "curse.maven:ctm-lib-1568397:${ctm_lib_neoforge_file}",
+    fusion    : "maven.modrinth:fusion-connected-textures:${fusion_neoforge_version}",
+    athena    : "curse.maven:athena-841890:${athena_neoforge_file}"
+]
+if (!validationEngineDependencies.containsKey(validationEngine)) {
+    throw new GradleException("Unknown AutoSeamBlend validation engine '${validationEngine}'. Expected one of: ${validationEngineDependencies.keySet().join(', ')}")
+}
+
+neoForge {
+    version = neoforge_version
+    // Automatically enable neoforge AccessTransformers if the file exists
+    def at = project(':common').file('src/main/resources/META-INF/accesstransformer.cfg')
+    if (at.exists()) {
+        accessTransformers.from(at.absolutePath)
+    }
+    runs {
+        configureEach {
+            systemProperty('neoforge.enabledGameTestNamespaces', mod_id)
+            ideName = "NeoForge ${it.name.capitalize()} (${project.path})" // Unify the run config names with fabric
+        }
+        client {
+            client()
+            gameDirectory = this.mkdir(this.file('runs/client'))
+        }
+        data {
+            clientData()
+            gameDirectory = this.mkdir(this.file('runs/data'))
+            // DataGen can be run by - "./gradlew :neoforge:runData" in Terminal.
+            // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
+            programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+        }
+        server {
+            server()
+            this.file('runs/server').createParentDirectories()
+            gameDirectory = this.mkdir(this.file('runs/server'))
+        }
+    }
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+dependencies {
+    // External player dependencies; normal implementation/runtimeOnly never bundles them.
+    implementation("me.fzzyhmstrs:fzzy_config:${fzzy_config_neoforge_version}") {
+        // The exact external KotlinForForge runtime is declared below from CurseMaven.
+        exclude group: 'thedarkcolour', module: 'kotlinforforge-neoforge'
+    }
+    runtimeOnly("curse.maven:kotlin-for-forge-351264:${kotlin_for_forge_2612_file}")
+
+    // UILib is part of the released mod through NeoForge's native Jar-in-Jar container.
+    jarJar(implementation("com.daqem.uilib:uilib-neoforge:${uilib_version}")) {
+        version {
+            strictly "[${uilib_version},20.1.5)"
+            prefer uilib_version
+        }
+    }
+
+    // Optional compatibility targets: compile surface only, never bundled or forced on players.
+    compileOnly("curse.maven:neocontinuity-1377279:${neocontinuity_neoforge_file}")
+    compileOnly("curse.maven:ctm-lib-1568397:${ctm_lib_neoforge_file}")
+    compileOnly("maven.modrinth:fusion-connected-textures:${fusion_neoforge_version}")
+    compileOnly("curse.maven:athena-841890:${athena_neoforge_file}")
+    // Development validation intentionally loads exactly one optional engine.
+    runtimeOnly(validationEngineDependencies[validationEngine])
+}
+
+// Implement mcgradleconventions loader attribute
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->
+    configurations.named(variant) {
+        attributes {
+            attribute(loaderAttribute, 'neoforge')
+        }
+    }
+}
+sourceSets.configureEach {
+    [it.compileClasspathConfigurationName, it.runtimeClasspathConfigurationName, it.getTaskName(null, 'jarJar')].each { variant ->
+        configurations.named(variant) {
+            attributes {
+                attribute(loaderAttribute, 'neoforge')
+            }
+        }
+    }
+}

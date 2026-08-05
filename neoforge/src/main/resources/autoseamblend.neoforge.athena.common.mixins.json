@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kltyton.autoseamblend.mixin.athena",
+  "plugin": "com.kltyton.autoseamblend.neoforge.mixin.OptionalEngineMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "AthenaResourceLoaderAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

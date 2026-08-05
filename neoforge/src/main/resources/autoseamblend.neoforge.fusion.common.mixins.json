@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kltyton.autoseamblend.mixin.fusion",
+  "plugin": "com.kltyton.autoseamblend.neoforge.mixin.OptionalEngineMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "BlockModelModifierReloadListenerMixin",
+    "BlockModelModifierPropertiesAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

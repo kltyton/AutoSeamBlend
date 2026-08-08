@@ -56,15 +56,30 @@ public final class FabricModelLifecycle {
                 instanceof IronBarsBlock)) {
             return model;
         }
+        // 中文：首次烘焙时 current() 仍是 bootstrap 空代次（methods/surfaces=0），必须读
+        // 同代次 pending 的预缝合方法表，否则自动发现的染色玻璃板永远装不上端盖剔除包装器；
+        // NeoForge 在同一烘焙内现算表面，因此没有这个问题。
+        // English: On the first bake current() is still the empty bootstrap generation
+        // (methods/surfaces=0); read the same-reload pending pre-stitch method table so
+        // auto-discovered stained panes get the cap-culling wrapper. NeoForge computes
+        // surfaces inside the same bake and therefore has no such gap.
+        ReloadPublication.Generation pending =
+                ReloadPublication.pendingPreparation()
+                        .orElse(null);
         PreparedSurfaceMethods.Snapshot methods =
-                ReloadPublication.current()
-                        .preparedMethods();
+                pending != null
+                        ? pending.preparedMethods()
+                        : ReloadPublication.current()
+                                .preparedMethods();
         MinecraftSurfaceCatalog.Snapshot surfaces =
                 ReloadPublication.current()
                         .surfaces();
         if (!FabricGlassPaneSeamCulling.applies(
                 context.state().getBlock(),
-                ReloadPublication.current().selectors(),
+                pending != null
+                        ? pending.selectors()
+                        : ReloadPublication.current()
+                                .selectors(),
                 methods,
                 surfaces)) {
             return model;

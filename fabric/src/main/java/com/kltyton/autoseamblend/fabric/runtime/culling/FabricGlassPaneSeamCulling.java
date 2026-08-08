@@ -4,15 +4,22 @@ import com.kltyton.autoseamblend.runtime.selection.RuleRuntime;
 import com.kltyton.autoseamblend.runtime.surface.MinecraftSurfaceCatalog;
 import com.kltyton.autoseamblend.runtime.surface.PreparedSurfaceMethods;
 import com.kltyton.autoseamblend.runtime.culling.PaneSeamCullingPolicy;
+import java.util.function.Predicate;
 import java.util.List;
 import java.util.Objects;
 import net.fabricmc.fabric.api.client.model.loading.v1.wrapper.WrapperBlockStateModel;
+import net.fabricmc.fabric.api.client.renderer.v1.mesh.MutableQuadView;
+import net.fabricmc.fabric.api.client.renderer.v1.mesh.QuadEmitter;
+import net.fabricmc.fabric.api.client.renderer.v1.mesh.QuadTransform;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
 import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.resources.model.sprite.Material;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.state.BlockState;
 import java.util.ArrayList;
 
 /**
@@ -67,6 +74,57 @@ public final class FabricGlassPaneSeamCulling {
             for (BlockStateModelPart part : source) {
                 output.add(new PaneCullingPart(part));
             }
+        }
+
+        /**
+         * 中文：Fabric 渲染器走 emitQuads 发射路径，WrapperBlockStateModel 的默认实现直接
+         * 透传给内层模型并绕过 collectParts 重分桶；必须在发射层用 QuadTransform 把未剔除的
+         * UP/DOWN 端盖 Quad 改写为对应 cullFace，与 1.21.1 已验证修复一致。
+         *
+         * English: The Fabric renderer emits through emitQuads, and WrapperBlockStateModel's
+         * default implementation forwards straight to the wrapped model, bypassing the
+         * collectParts re-bucketing; the unculled UP/DOWN cap quads must be rewritten to the
+         * matching cullFace in a QuadTransform at emission time, matching the verified 1.21.1 fix.
+         */
+        @Override
+        public void emitQuads(
+                QuadEmitter emitter,
+                BlockAndTintGetter level,
+                BlockPos pos,
+                BlockState state,
+                RandomSource random,
+                Predicate<Direction> cullTest) {
+            emitter.pushTransform(
+                    PaneCapCullTransform.INSTANCE);
+            try {
+                super.emitQuads(
+                        emitter,
+                        level,
+                        pos,
+                        state,
+                        random,
+                        cullTest);
+            } finally {
+                emitter.popTransform();
+            }
+        }
+    }
+
+    private static final class PaneCapCullTransform
+            implements QuadTransform {
+        private static final PaneCapCullTransform INSTANCE =
+                new PaneCapCullTransform();
+
+        @Override
+        public boolean transform(
+                MutableQuadView quad) {
+            Direction face = quad.lightFace();
+            if (quad.cullFace() == null
+                    && (face == Direction.UP
+                            || face == Direction.DOWN)) {
+                quad.cullFace(face);
+            }
+            return true;
         }
     }
 

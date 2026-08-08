@@ -75,6 +75,7 @@ public final class PaintWorkspaceLayout<T extends WorkbenchDraftFields> {
                     20,
                     Component.translatable(
                             "gui.autoseamblend.paint.color"));
+    private boolean syncingColorInput;
 
     public PaintWorkspaceLayout(
             WorkbenchLayoutHost host,
@@ -86,7 +87,22 @@ public final class PaintWorkspaceLayout<T extends WorkbenchDraftFields> {
                 controller,
                 "controller");
         colorInput.setMaxLength(9);
-        colorInput.setValue("#FFFFFFFF");
+        setColorInput("#FFFFFFFF");
+    }
+
+    /**
+     * 中文：程序化同步颜色输入框内容，不派发用户动作。
+     *
+     * English: Programmatically syncs the color input without dispatching a
+     * user action.
+     */
+    private void setColorInput(String rgba) {
+        syncingColorInput = true;
+        try {
+            colorInput.setValue(rgba);
+        } finally {
+            syncingColorInput = false;
+        }
     }
 
     /**
@@ -96,7 +112,7 @@ public final class PaintWorkspaceLayout<T extends WorkbenchDraftFields> {
      * paint mode.
      */
     public void open(PaintViewModel paint) {
-        colorInput.setValue(
+        setColorInput(
                 PaintColorCodec.rgba(
                         Objects.requireNonNull(
                                         paint,
@@ -398,9 +414,20 @@ public final class PaintWorkspaceLayout<T extends WorkbenchDraftFields> {
                 && paint.editable();
         colorInput.setResponder(value ->
                 PaintColorCodec.parseRgba(value)
-                        .ifPresent(color -> dispatch(
-                                new ChoosePaintColor(
-                                        color))));
+                        .ifPresent(color -> {
+                            if (syncingColorInput
+                                    || controller.view()
+                                            .paint()
+                                            .map(
+                                                    PaintViewModel::color)
+                                            .orElse(-1)
+                                            == color) {
+                                return;
+                            }
+                            dispatch(
+                                    new ChoosePaintColor(
+                                            color));
+                        }));
         host.addWidget(colorInput);
         int columns = Math.max(
                 1,
@@ -420,7 +447,7 @@ public final class PaintWorkspaceLayout<T extends WorkbenchDraftFields> {
                                 dispatch(
                                         new ChoosePaintColor(
                                                 color));
-                                colorInput.setValue(
+                                setColorInput(
                                         PaintColorCodec.rgba(
                                                 color));
                             });

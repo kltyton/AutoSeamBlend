@@ -249,7 +249,7 @@ public final class UilibWorkbenchScreen<T extends WorkbenchDraftFields>
         paintLayout.assemble(
                 paint,
                 new WorkbenchViewLease(
-                        controller.publicationVersion(),
+                        controller.layoutGeneration(),
                         view.mode()),
                 frame);
         modeFooter(

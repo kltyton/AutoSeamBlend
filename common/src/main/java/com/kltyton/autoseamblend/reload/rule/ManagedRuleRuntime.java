@@ -6,7 +6,6 @@ import com.kltyton.autoseamblend.authoring.storage.ManagedPackIdentity;
 import com.kltyton.autoseamblend.authoring.storage.ManagedPackLayout;
 import com.kltyton.autoseamblend.engine.EngineFamily;
 import com.kltyton.autoseamblend.engine.ownership.NativeSlot;
-import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.reload.rule.evidence.NativeSlotEvidenceResolver;
 import com.kltyton.autoseamblend.runtime.publication.ReloadPublication;
 import java.io.IOException;
@@ -47,7 +46,6 @@ public final class ManagedRuleRuntime {
             throw new IllegalArgumentException(
                     "generation must be positive");
         }
-        ManagedRuleSnapshot previous = current();
         ArrayList<String> diagnostics = new ArrayList<>();
         ArrayList<ManagedRule> rules = new ArrayList<>();
         ArrayList<ManagedRuleDocument> documents = new ArrayList<>();
@@ -62,18 +60,10 @@ public final class ManagedRuleRuntime {
                     rules,
                     documents,
                     diagnostics)) {
-                logDiagnostics(diagnostics);
-                Constants.LOG.error(
-                        "Retained Managed native authoring generation {} after fatal workspace scan failure",
-                        previous.generation());
                 return Optional.empty();
             }
         }
         if (diagnostics.contains("MANAGED_WORKSPACE_UNSAFE")) {
-            logDiagnostics(diagnostics);
-            Constants.LOG.error(
-                    "Retained Managed native authoring generation {} because the workspace root is unsafe",
-                    previous.generation());
             return Optional.empty();
         }
         ManagedRuleSnapshot next = ManagedRuleSnapshot.create(
@@ -82,12 +72,6 @@ public final class ManagedRuleRuntime {
                 rules,
                 documents,
                 diagnostics);
-        Constants.LOG.info(
-                "Prepared Managed native authoring generation {}: rules={}, diagnostics={}",
-                next.generation(),
-                next.rules().size(),
-                next.diagnostics().size());
-        logDiagnostics(next.diagnostics());
         return Optional.of(next);
     }
 
@@ -237,9 +221,4 @@ public final class ManagedRuleRuntime {
                 .replace('\\', '/');
     }
 
-    private static void logDiagnostics(List<String> diagnostics) {
-        diagnostics.forEach(value -> Constants.LOG.warn(
-                "Managed native authoring: {}",
-                value));
-    }
 }

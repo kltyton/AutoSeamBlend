@@ -1,6 +1,5 @@
 package com.kltyton.autoseamblend.texture.atlas;
 
-import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.texture.generation.GeneratedSpriteTransform;
 import com.kltyton.autoseamblend.texture.generation.GeneratedSpriteDefinition;
 import com.kltyton.autoseamblend.mixin.minecraft.SpriteContentsImageAccessor;
@@ -152,11 +151,8 @@ public final class GeneratedSpriteSet {
                                     metadata.clamp(),
                                     MipmapStrategy.AUTO,
                                     metadata.alphaCutoffBias())));
-        } catch (IOException exception) {
-            Constants.LOG.warn(
-                    "Could not read generated-sprite metadata for {}",
-                    sourceSpriteId(),
-                    exception);
+        } catch (IOException ignored) {
+            // 中文：元数据读取失败时退回空元数据。 / English: Fall back to empty metadata when the metadata cannot be read.
             return SourceMetadata.empty();
         }
     }

@@ -599,6 +599,8 @@ public class TextureCanvasWidget
         private final UilibWorkbenchController<T> controller;
         private final PaintViewModel paint;
         private final WorkbenchViewLease lease;
+        private final int width;
+        private final int height;
 
         private ControllerPaintSession(
                 UilibWorkbenchController<T> controller,
@@ -613,28 +615,60 @@ public class TextureCanvasWidget
             this.lease = Objects.requireNonNull(
                     lease,
                     "lease");
+            this.width = paint.width();
+            this.height = paint.height();
+        }
+
+        /** 中文：租约有效且目标尺寸一致时返回当前不可变绘画快照，跨目标/尺寸变化安全拒绝。 / English: Returns the live immutable paint snapshot only while the lease is valid and the target dimensions match; cross-target or resized states are rejected. */
+        private PaintViewModel currentPaint() {
+            if (!lease.accepts(
+                    controller.layoutGeneration(),
+                    controller.view().mode())) {
+                return null;
+            }
+            PaintViewModel live = controller.view()
+                    .paint()
+                    .orElse(null);
+            if (live == null
+                    || live.width() != width
+                    || live.height() != height) {
+                return null;
+            }
+            return live;
         }
 
         @Override
         public int width() {
-            return paint.width();
+            PaintViewModel live = currentPaint();
+            return live != null
+                    ? live.width()
+                    : paint.width();
         }
 
         @Override
         public int height() {
-            return paint.height();
+            PaintViewModel live = currentPaint();
+            return live != null
+                    ? live.height()
+                    : paint.height();
         }
 
         @Override
         public int colorAt(
                 int x,
                 int y) {
-            return paint.colorAt(x, y);
+            PaintViewModel live = currentPaint();
+            return live != null
+                    ? live.colorAt(x, y)
+                    : paint.colorAt(x, y);
         }
 
         @Override
         public PaintTool tool() {
-            return paint.tool();
+            PaintViewModel live = currentPaint();
+            return live != null
+                    ? live.tool()
+                    : paint.tool();
         }
 
         @Override
@@ -644,9 +678,7 @@ public class TextureCanvasWidget
 
         @Override
         public boolean current() {
-            return lease.accepts(
-                    controller.publicationVersion(),
-                    controller.view().mode());
+            return currentPaint() != null;
         }
 
         @Override
@@ -658,9 +690,10 @@ public class TextureCanvasWidget
 
         @Override
         public boolean canContinueStroke() {
-            return current()
+            PaintViewModel live = currentPaint();
+            return live != null
                     && controller.view().canSubmit()
-                    && paint.editable();
+                    && live.editable();
         }
 
         @Override

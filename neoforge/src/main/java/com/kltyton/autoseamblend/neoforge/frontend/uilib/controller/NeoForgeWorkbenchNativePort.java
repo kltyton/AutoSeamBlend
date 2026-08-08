@@ -680,9 +680,7 @@ final class NeoForgeWorkbenchNativePort
                 view.document(),
                 view.mode(),
                 view.targets(),
-                WorkbenchViewMappings.availableCandidates(
-                        current.targets(),
-                        List.copyOf(candidates)),
+                List.copyOf(candidates),
                 List.copyOf(selectors),
                 view.selectedEntryKey(),
                 view.preview(),
@@ -713,7 +711,9 @@ final class NeoForgeWorkbenchNativePort
                 current.document(),
                 current.mode(),
                 current.targets(),
-                List.copyOf(candidates),
+                WorkbenchViewMappings.availableCandidates(
+                        current.targets(),
+                        List.copyOf(candidates)),
                 List.copyOf(selectors),
                 current.selectedEntryKey(),
                 current.preview(),
@@ -777,6 +777,9 @@ final class NeoForgeWorkbenchNativePort
                     .thenApply(result -> {
                         if (!result.success()) {
                             return failed(operation.view(), new IllegalStateException(result.detail()));
+                        }
+                        if (result.failure() != null) {
+                            return failed(operation.view(), result.failure());
                         }
                         WorkbenchViewModel<ManagedAuthoringDraft> settled = WorkbenchViewReducer.copy(
                                 operation.view(),

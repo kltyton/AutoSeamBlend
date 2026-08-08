@@ -50,9 +50,6 @@ public final class UilibWorkbenchEntry {
         try {
             FabricWorkbenchController.open();
         } catch (RuntimeException exception) {
-            Constants.LOG.warn(
-                    "UILib workbench key entry failed",
-                    exception);
             if (minecraft.player != null) {
                 minecraft.player.sendSystemMessage(
                         Component.translatable(

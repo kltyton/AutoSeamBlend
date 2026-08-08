@@ -65,8 +65,12 @@ public final class UilibWorkbenchController {
             minecraft.setScreen(blockedScreen(minecraft));
             return 1;
         }
+        EngineQuerySelection selected =
+                selection.orElseThrow();
         UilibWorkbenchController controller =
-                new UilibWorkbenchController(minecraft, selection.orElseThrow());
+                new UilibWorkbenchController(
+                        minecraft,
+                        selected);
         minecraft.setScreen(controller.screen);
         return 1;
     }

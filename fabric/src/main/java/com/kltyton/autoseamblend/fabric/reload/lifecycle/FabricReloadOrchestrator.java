@@ -128,12 +128,8 @@ public final class FabricReloadOrchestrator {
         Map<BlockState, BlockStateModel> models;
         try {
             models = captureModels();
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException ignored) {
             ReloadPublication.discardPending(generation);
-            Constants.LOG.error(
-                    "AutoSeamBlend Fabric model capture rejected generation {}",
-                    generation,
-                    exception);
             return;
         }
         ModelOwnershipRuntime.PreparedCapture ownership = null;
@@ -149,15 +145,11 @@ public final class FabricReloadOrchestrator {
             ReloadPublication.stageModelFacts(
                     ownership,
                     surfaces);
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException ignored) {
             if (ownership != null) {
                 ModelOwnershipRuntime.abort(ownership);
             }
             ReloadPublication.discardPending(generation);
-            Constants.LOG.error(
-                    "AutoSeamBlend Fabric model-fact staging rejected generation {}",
-                    generation,
-                    exception);
             return;
         }
         resolveSprites(generation);
@@ -192,16 +184,8 @@ public final class FabricReloadOrchestrator {
                             catalog);
             ReloadPublication.stageResolvedSprites(
                     resolved);
-            Constants.LOG.info(
-                    "Resolved AutoSeamBlend generated state sprites: generation={}, sets={}",
-                    catalog.generation(),
-                    resolved.spritesByKey().size());
-        } catch (RuntimeException exception) {
+        } catch (RuntimeException ignored) {
             ReloadPublication.discardPending(generation);
-            Constants.LOG.error(
-                    "AutoSeamBlend Fabric generated-sprite resolution rejected generation {}",
-                    generation,
-                    exception);
         }
     }
 }

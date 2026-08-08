@@ -1,6 +1,5 @@
 package com.kltyton.autoseamblend.neoforge.compat.athena.runtime;
 
-import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.neoforge.compat.athena.runtime.pane.AthenaGeneratedPaneModelFactory;
 import com.kltyton.autoseamblend.runtime.surface.MinecraftSurfaceCatalog;
 import com.kltyton.autoseamblend.runtime.publication.ReloadPublication;
@@ -23,13 +22,10 @@ public final class AthenaModelLifecycle {
                         .filter(candidate ->
                                 candidate.generation() == surfaces.generation())
                         .orElseGet(ReloadPublication::current);
-        int[] decorated = {0};
-        int[] nativePanes = {0};
         models.replaceAll((state, model) -> {
             if (!surfaces.states().containsKey(state)) {
                 return model;
             }
-            decorated[0]++;
             BlockStateModel paneModel = AthenaGeneratedPaneModelFactory
                     .create(
                             event.getTextureGetter(),
@@ -39,18 +35,11 @@ public final class AthenaModelLifecycle {
                             model)
                     .orElse(null);
             if (paneModel != null) {
-                nativePanes[0]++;
                 return paneModel;
             }
             return new AthenaConnectedBlockStateModel(
                     model,
                     state);
         });
-        Constants.LOG.info(
-                "Installed Athena-native AutoBlend model routing for {} block states",
-                decorated[0]);
-        Constants.LOG.info(
-                "Installed Athena native pane geometry for {} block states",
-                nativePanes[0]);
     }
 }

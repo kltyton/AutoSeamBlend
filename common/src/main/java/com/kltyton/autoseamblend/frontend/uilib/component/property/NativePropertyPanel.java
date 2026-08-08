@@ -233,45 +233,62 @@ public final class NativePropertyPanel {
         int width = host.width();
         int viewportHeight = Math.max(
                 1,
-                footerTop - GAP - top);
+                footerTop - top);
         int contentWidth = Math.max(
                 1,
-                width - MARGIN * 2 - 8);
+                width - MARGIN * 2);
+        int textWidth = Math.max(
+                1,
+                contentWidth - CONTENT_INSET * 2);
         PropertyCanvas canvas =
                 new PropertyCanvas(
                         contentWidth,
                         viewportHeight);
         canvas.addText(
-                row.displayName(),
+                NativePropertyPanelLayout.fitComponent(
+                        row.displayName(),
+                        textWidth),
                 CONTENT_INSET,
                 14,
                 UilibWorkbenchTheme.TEXT_PRIMARY);
         canvas.addText(
-                Component.literal(
-                        row.blockId().isBlank()
-                                ? row.entryId()
-                                : row.blockId()),
+                NativePropertyPanelLayout.fitComponent(
+                        Component.literal(
+                                row.blockId().isBlank()
+                                        ? row.entryId()
+                                        : row.blockId()),
+                        textWidth),
                 CONTENT_INSET,
                 30,
                 UilibWorkbenchTheme.TEXT_SECONDARY);
-        canvas.addText(
+        int documentBottom = addWrappedText(
+                canvas,
                 Component.translatable(
                         "gui.autoseamblend.property.native_document",
                         current.documentLabel()),
                 CONTENT_INSET,
                 50,
-                UilibWorkbenchTheme.STATUS_NATIVE);
-        int entryIdTop = 72;
+                UilibWorkbenchTheme.STATUS_NATIVE,
+                textWidth);
+        int entryIdTop = Math.max(
+                72,
+                documentBottom + 4);
         if (!current.sourceDocumentPath().isBlank()) {
+            int pathY = documentBottom + 2;
             canvas.addText(
                     Component.literal(
                             NativePropertyPanelLayout.compactPath(
                                     current.sourceDocumentPath(),
                                     contentWidth)),
                     CONTENT_INSET,
-                    64,
+                    pathY,
                     UilibWorkbenchTheme.TEXT_SECONDARY);
-            entryIdTop = 82;
+            entryIdTop = Math.max(
+                    82,
+                    pathY
+                            + Minecraft.getInstance()
+                                    .font.lineHeight
+                            + 9);
         }
         PropertyFieldLayout.EntryField entryField =
                 PropertyFieldLayout.entryField(
@@ -305,7 +322,8 @@ public final class NativePropertyPanel {
         applyEntryId.setAction(() ->
                 dispatch(new SetNativeEntryId(
                         entryIdInput.getValue())));
-        canvas.addText(
+        int resolvedBottom = addWrappedText(
+                canvas,
                 Component.translatable(
                         "gui.autoseamblend.property.entry_id_resolved",
                         current.entryId()
@@ -313,12 +331,14 @@ public final class NativePropertyPanel {
                                 .orElse(row.entryId())),
                 CONTENT_INSET,
                 entryField.actionY() + 24,
-                UilibWorkbenchTheme.TEXT_SECONDARY);
+                UilibWorkbenchTheme.TEXT_SECONDARY,
+                textWidth);
 
-        int fieldTop =
+        int fieldTop = Math.max(
                 entryIdTop
                         + entryField.rowHeight()
-                        + 8;
+                        + 8,
+                resolvedBottom + 8);
         for (Field field : current.fields()) {
             if (!field.id().equals("method")
                     && !field.id().equals("compatibility")) {
@@ -352,7 +372,13 @@ public final class NativePropertyPanel {
                                 next.token())));
             } else {
                 canvas.addText(
-                        field.valueLabel(),
+                        NativePropertyPanelLayout.fitComponent(
+                                field.valueLabel(),
+                                Math.max(
+                                        1,
+                                        contentWidth
+                                                - geometry.controlX()
+                                                - CONTENT_INSET)),
                         geometry.controlX(),
                         geometry.controlY() + 7,
                         UilibWorkbenchTheme.TEXT_MUTED);
@@ -425,7 +451,9 @@ public final class NativePropertyPanel {
                         0);
         content.setX(MARGIN);
         content.setY(top);
-        content.addComponent(canvas.root());
+        attachScrollChild(
+                content,
+                canvas.root());
         content.setScrollAmount(
                 propertyScrollAmount);
         propertyScroll = content;
@@ -733,13 +761,18 @@ public final class NativePropertyPanel {
                                 == AthenaConnection.CUSTOM
                         ? "gui.autoseamblend.property.athena_connection_custom"
                         : "gui.autoseamblend.property.athena_connection_help";
-        canvas.addText(
+        addWrappedText(
+                canvas,
                 Component.translatable(
                         helpKey,
                         current.documentLabel()),
                 CONTENT_INSET,
                 helpTop,
-                UilibWorkbenchTheme.TEXT_SECONDARY);
+                UilibWorkbenchTheme.TEXT_SECONDARY,
+                Math.max(
+                        1,
+                        canvas.width()
+                                - CONTENT_INSET * 2));
     }
 
     /**
@@ -757,25 +790,37 @@ public final class NativePropertyPanel {
                                 == AthenaConnection.CUSTOM
                         ? "gui.autoseamblend.property.athena_connection_custom"
                         : "gui.autoseamblend.property.family_native_read_only";
-        canvas.addText(
+        int statusBottom = addWrappedText(
+                canvas,
                 Component.translatable(
                         statusKey,
                         current.documentLabel()),
                 CONTENT_INSET,
                 sectionTop + 58,
-                UilibWorkbenchTheme.TEXT_SECONDARY);
-        int detailY = sectionTop + 78;
+                UilibWorkbenchTheme.TEXT_SECONDARY,
+                Math.max(
+                        1,
+                        canvas.width()
+                                - CONTENT_INSET * 2));
+        int detailY = Math.max(
+                sectionTop + 78,
+                statusBottom + 8);
         for (Map.Entry<String, String> detail :
                 current.nativeDetails().entrySet()) {
-            canvas.addText(
+            int detailBottom = addWrappedText(
+                    canvas,
                     Component.literal(
                             detail.getKey()
                                     + ": "
                                     + detail.getValue()),
                     CONTENT_INSET,
                     detailY,
-                    UilibWorkbenchTheme.TEXT_SECONDARY);
-            detailY += 14;
+                    UilibWorkbenchTheme.TEXT_SECONDARY,
+                    Math.max(
+                            1,
+                            canvas.width()
+                                    - CONTENT_INSET * 2));
+            detailY = detailBottom + 6;
         }
     }
 
@@ -819,10 +864,15 @@ public final class NativePropertyPanel {
                     new BlockChipWidget(
                             rowLayout.chipWidth(),
                             visual.icon(),
-                            entry.opaque()
-                                    ? Component.translatable(
-                                            "gui.autoseamblend.property.selector_opaque")
-                                    : visual.displayName(),
+                            NativePropertyPanelLayout.fitComponent(
+                                    entry.opaque()
+                                            ? Component.translatable(
+                                                    "gui.autoseamblend.property.selector_opaque")
+                                            : visual.displayName(),
+                                    Math.max(
+                                            1,
+                                            rowLayout.chipWidth()
+                                                    - 40)),
                             NativePropertyPanelLayout.compactSelector(
                                     entry.serialized()),
                             false,
@@ -941,10 +991,14 @@ public final class NativePropertyPanel {
                     new BlockChipWidget(
                             chipWidth,
                             visual.icon(),
-                            entry.opaque()
-                                    ? Component.translatable(
-                                            "gui.autoseamblend.property.selector_opaque")
-                                    : visual.displayName(),
+                            NativePropertyPanelLayout.fitComponent(
+                                    entry.opaque()
+                                            ? Component.translatable(
+                                                    "gui.autoseamblend.property.selector_opaque")
+                                            : visual.displayName(),
+                                    Math.max(
+                                            1,
+                                            chipWidth - 40)),
                             NativePropertyPanelLayout.compactSelector(
                                     entry.serialized()),
                             true,
@@ -1002,38 +1056,49 @@ public final class NativePropertyPanel {
         int width = host.width();
         int viewportHeight = Math.max(
                 80,
-                footerTop - GAP - top);
+                footerTop - top);
         int contentWidth = Math.max(
                 1,
-                width - MARGIN * 2 - 8);
+                width - MARGIN * 2);
+        int textWidth = Math.max(
+                1,
+                contentWidth - CONTENT_INSET * 2);
         PropertyCanvas canvas =
                 new PropertyCanvas(
                         contentWidth,
                         viewportHeight);
         canvas.addText(
-                Component.translatable(
-                        editorTarget
-                                        == PickerTarget.MATCHING
-                                ? "gui.autoseamblend.property.selector_edit_matching"
-                                : "gui.autoseamblend.property.selector_edit_connection"),
+                NativePropertyPanelLayout.fitComponent(
+                        Component.translatable(
+                                editorTarget
+                                                == PickerTarget.MATCHING
+                                        ? "gui.autoseamblend.property.selector_edit_matching"
+                                        : "gui.autoseamblend.property.selector_edit_connection"),
+                        textWidth),
                 CONTENT_INSET,
                 14,
                 UilibWorkbenchTheme.TEXT_PRIMARY);
-        canvas.addText(
+        int serializedBottom = addWrappedText(
+                canvas,
                 Component.literal(
                         entry.serialized()),
                 CONTENT_INSET,
                 32,
-                UilibWorkbenchTheme.TEXT_SECONDARY);
+                UilibWorkbenchTheme.TEXT_SECONDARY,
+                textWidth);
         if (entry.opaque() || !entry.editable()) {
-            canvas.addText(
+            addWrappedText(
+                    canvas,
                     Component.translatable(
                             "gui.autoseamblend.property.selector_opaque_help"),
                     CONTENT_INSET,
                     58,
-                    UilibWorkbenchTheme.TEXT_SECONDARY);
+                    UilibWorkbenchTheme.TEXT_SECONDARY,
+                    textWidth);
         } else {
-            int propertyY = 58;
+            int propertyY = Math.max(
+                    58,
+                    serializedBottom + 8);
             for (PropertyValues property :
                     orderedProperties(entry)) {
                 PropertyFieldLayout.Field propertyField =
@@ -1117,7 +1182,9 @@ public final class NativePropertyPanel {
                         0);
         content.setX(MARGIN);
         content.setY(top);
-        content.addComponent(canvas.root());
+        attachScrollChild(
+                content,
+                canvas.root());
         content.setScrollAmount(
                 editorScrollAmount);
         editorScroll = content;
@@ -1140,6 +1207,10 @@ public final class NativePropertyPanel {
         NativePropertiesViewModel current =
                 requireProperties();
         int width = host.width();
+        int controlLeft = MARGIN + 16;
+        int controlWidth = Math.max(
+                1,
+                width - controlLeft * 2);
         host.addComponent(new PanelComponent(
                 MARGIN,
                 top,
@@ -1147,18 +1218,16 @@ public final class NativePropertyPanel {
                 Math.max(1, footerTop - GAP - top),
                 UilibWorkbenchTheme.SURFACE_PANEL));
         host.addText(
-                Component.translatable(
-                        pickerTarget
-                                        == PickerTarget.MATCHING
-                                ? "gui.autoseamblend.property.pick_matching_block"
-                                : "gui.autoseamblend.property.pick_connection_block"),
+                NativePropertyPanelLayout.fitComponent(
+                        Component.translatable(
+                                pickerTarget
+                                                == PickerTarget.MATCHING
+                                        ? "gui.autoseamblend.property.pick_matching_block"
+                                        : "gui.autoseamblend.property.pick_connection_block"),
+                        controlWidth),
                 MARGIN + 16,
                 top + 12,
                 UilibWorkbenchTheme.TEXT_PRIMARY);
-        int controlLeft = MARGIN + 16;
-        int controlWidth = Math.max(
-                1,
-                width - controlLeft * 2);
         boolean sideBySide =
                 controlWidth >= 260;
         int doneWidth = sideBySide
@@ -1229,7 +1298,8 @@ public final class NativePropertyPanel {
             if (shown >= PICKER_RESULT_LIMIT) {
                 break;
             }
-            list.addComponent(
+            attachScrollChild(
+                    list,
                     new NativePropertyBlockChipComponent(
                             Math.max(
                                     1,
@@ -1329,6 +1399,55 @@ public final class NativePropertyPanel {
             editorScrollAmount =
                     editorScroll.scrollAmount();
         }
+    }
+
+    /**
+     * 中文：按正文可用宽度逐行绘制换行文本，返回下一行的 y。
+     *
+     * English: Draws wrapped text line by line within the body's usable width
+     * and returns the y of the next line.
+     */
+    private int addWrappedText(
+            PropertyCanvas canvas,
+            Component text,
+            int x,
+            int y,
+            int color,
+            int maxWidth) {
+        int cursor = y;
+        for (Component line :
+                NativePropertyPanelLayout.wrap(
+                        text,
+                        maxWidth)) {
+            canvas.addText(
+                    line,
+                    x,
+                    cursor,
+                    color);
+            cursor += Minecraft.getInstance()
+                    .font.lineHeight;
+        }
+        return cursor;
+    }
+
+    /**
+     * 中文：UILib 20.1.4 ScrollContainerWidget 不会把自身坐标下发给子组件；显式设置子组件
+     * 父坐标，使正文背景、文本与控件渲染在容器视口内。
+     *
+     * English: UILib 20.1.4's ScrollContainerWidget never propagates its own
+     * position to child components; the child's parent position is set
+     * explicitly so body background, text, and controls render inside the
+     * container viewport.
+     */
+    private static void attachScrollChild(
+            ScrollContainerWidget container,
+            IComponent child) {
+        container.addComponent(child);
+        child.updateParentPosition(
+                container.getX(),
+                container.getY(),
+                container.getWidth(),
+                container.getHeight());
     }
 
     private SelectorVisual visual(Entry entry) {

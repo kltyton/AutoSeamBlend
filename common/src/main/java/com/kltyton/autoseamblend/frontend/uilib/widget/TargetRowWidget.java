@@ -14,7 +14,16 @@ import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.FormattedCharSequence;
 import org.jetbrains.annotations.NotNull;
 
-/** 中文：同时绘制方块图标、语言名、ID 与来源状态的整行按钮。 / English: Whole-row button drawing a block icon, localized name, id, and source state. */
+/**
+ * 中文：同时绘制方块图标、语言名、ID 与来源状态的整行按钮。
+ * 未展开行按固定纵向基线（第 1 行标题、第 2 行 ID）与横向列边界（图标、文本、
+ * config、engine、toggle）布局；每一列都按自身像素宽度截断，绝不越界叠压。
+ *
+ * English: Whole-row button drawing a block icon, localized name, id, and
+ * source state. Unexpanded rows use fixed vertical baselines (title line 1,
+ * id line 2) and horizontal columns (icon, text, config, engine, toggle);
+ * every column clips to its measured pixel width and never overflows.
+ */
 public final class TargetRowWidget extends ButtonWidget {
     private static final int GRID =
             UilibWorkbenchMetrics.GRID;
@@ -23,6 +32,7 @@ public final class TargetRowWidget extends ButtonWidget {
     private static final int ICON_SIZE = GRID * 4;
     private static final int PRIMARY_MIN_WIDTH = GRID * 10;
     private static final int METADATA_MIN_WIDTH = GRID * 8;
+    private static final int MARKER_INSET = GRID * 2;
     private static final int FIRST_LINE_OFFSET = GRID * 2;
     private static final int SECOND_LINE_OFFSET = GRID * 6;
     private final TargetRowView row;
@@ -96,34 +106,15 @@ public final class TargetRowWidget extends ButtonWidget {
                 .withColor(
                         UilibWorkbenchTheme.TEXT_BUTTON_SECONDARY);
         int markerWidth = font.width(marker);
-        int markerX = Math.max(
+        int markerLeft = Math.max(
                 left,
-                right - INNER_INSET - markerWidth);
-        int textRight = Math.max(
+                right - MARKER_INSET - markerWidth);
+        int textRegionRight = Math.max(
                 left,
-                markerX - COLUMN_GAP);
-        boolean iconFits = right - left
-                >= INNER_INSET * 2
-                        + ICON_SIZE
-                        + COLUMN_GAP
-                        + markerWidth
-                        + PRIMARY_MIN_WIDTH;
-        int textLeft;
-        if (iconFits) {
-            int iconX = left + INNER_INSET;
-            graphics.fakeItem(
-                    row.icon(),
-                    iconX,
-                    top + (getHeight() - ICON_SIZE) / 2);
-            textLeft = iconX + ICON_SIZE + COLUMN_GAP;
-        } else {
-            textLeft = Math.min(
-                    textRight,
-                    left + INNER_INSET);
-        }
-        int availableTextWidth = Math.max(
+                markerLeft - COLUMN_GAP);
+        int regionWidth = Math.max(
                 0,
-                textRight - textLeft);
+                textRegionRight - left);
         Component source = sourceLabel();
         Component family = Component.literal(
                         row.family().formatId())
@@ -132,22 +123,44 @@ public final class TargetRowWidget extends ButtonWidget {
         int desiredMetadataWidth = Math.max(
                 font.width(source),
                 font.width(family));
-        boolean showMetadata = availableTextWidth
+        boolean showMetadata = regionWidth
                 >= PRIMARY_MIN_WIDTH
                         + COLUMN_GAP
                         + METADATA_MIN_WIDTH;
         int metadataWidth = showMetadata
                 ? Math.min(
                         desiredMetadataWidth,
-                        availableTextWidth
+                        regionWidth
                                 - PRIMARY_MIN_WIDTH
                                 - COLUMN_GAP)
                 : 0;
-        int primaryWidth = showMetadata
-                ? availableTextWidth
-                        - metadataWidth
-                        - COLUMN_GAP
-                : availableTextWidth;
+        int metadataLeft = showMetadata
+                ? textRegionRight - metadataWidth
+                : textRegionRight;
+        int primaryRight = showMetadata
+                ? metadataLeft - COLUMN_GAP
+                : textRegionRight;
+        boolean showIcon = primaryRight - left
+                >= INNER_INSET
+                        + ICON_SIZE
+                        + COLUMN_GAP
+                        + PRIMARY_MIN_WIDTH;
+        int textLeft;
+        if (showIcon) {
+            int iconX = left + INNER_INSET;
+            graphics.fakeItem(
+                    row.icon(),
+                    iconX,
+                    top + (getHeight() - ICON_SIZE) / 2);
+            textLeft = iconX + ICON_SIZE + COLUMN_GAP;
+        } else {
+            textLeft = Math.min(
+                    primaryRight,
+                    left + INNER_INSET);
+        }
+        int primaryWidth = Math.max(
+                0,
+                primaryRight - textLeft);
         drawClipped(
                 graphics,
                 font,
@@ -169,7 +182,6 @@ public final class TargetRowWidget extends ButtonWidget {
                 top + SECOND_LINE_OFFSET,
                 primaryWidth);
         if (showMetadata) {
-            int metadataLeft = textRight - metadataWidth;
             drawClipped(
                     graphics,
                     font,
@@ -189,9 +201,9 @@ public final class TargetRowWidget extends ButtonWidget {
                 graphics,
                 font,
                 marker,
-                markerX,
+                markerLeft,
                 top + (getHeight() - font.lineHeight) / 2,
-                Math.max(0, right - markerX));
+                Math.max(0, right - markerLeft));
     }
 
     /**

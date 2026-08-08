@@ -109,16 +109,11 @@ public final class NeoForgeEntryPoint {
         modEventBus.addListener(
                 UilibPreviewRendererRegistration::register);
         if (engines.engineRequired()) {
-            Constants.LOG.error(
-                    "ENGINE_REQUIRED: install NeoContinuity, CTM Mod, Fusion, or Athena");
             return;
         }
 
         modEventBus.addListener(NeoForgeGeneratedSpriteSourceRegistration::register);
         modEventBus.addListener(NeoForgeGeneratedSpriteResolutionEvents::onTextureAtlasStitched);
-        Constants.LOG.info(
-                "Activated native dynamic connected-texture routing: installed={}",
-                engines.readyEngineIds());
     }
 
     /** 中文：仅在无第三方类型的发现门确认目标后链接并注册该引擎 provider。 / English: Links and registers engine providers only after the third-party-free discovery gate accepts the target. */

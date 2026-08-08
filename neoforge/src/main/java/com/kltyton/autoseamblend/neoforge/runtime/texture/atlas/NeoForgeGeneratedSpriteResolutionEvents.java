@@ -1,6 +1,5 @@
 package com.kltyton.autoseamblend.neoforge.runtime.texture.atlas;
 
-import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.runtime.publication.ReloadPublication;
 import com.kltyton.autoseamblend.texture.atlas.GeneratedSpriteAtlasResolution;
 import com.kltyton.autoseamblend.texture.atlas.GeneratedSpriteSetCatalog;
@@ -25,9 +24,5 @@ public final class NeoForgeGeneratedSpriteResolutionEvents {
                         atlas,
                         catalog);
         ReloadPublication.stageResolvedSprites(resolved);
-        Constants.LOG.info(
-                "Resolved AutoSeamBlend generated state sprites: generation={}, sets={}",
-                catalog.generation(),
-                resolved.spritesByKey().size());
     }
 }

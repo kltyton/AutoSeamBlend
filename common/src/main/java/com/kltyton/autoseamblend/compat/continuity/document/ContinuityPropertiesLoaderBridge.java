@@ -4,7 +4,6 @@ import com.kltyton.autoseamblend.authoring.format.mcpatcher.MCPatcherExecutionDo
 import com.kltyton.autoseamblend.authoring.format.mcpatcher.MCPatcherExtensionContext;
 import com.kltyton.autoseamblend.authoring.format.mcpatcher.MCPatcherMethodCodec;
 import com.kltyton.autoseamblend.authoring.storage.ManagedPackIdentity;
-import com.kltyton.autoseamblend.foundation.Constants;
 import java.util.Objects;
 import java.util.Properties;
 import me.pepperbell.continuity.api.client.CtmLoader;
@@ -47,21 +46,12 @@ public final class ContinuityPropertiesLoaderBridge {
                         pack,
                         packPriority);
         if (prepared.rejection().isPresent()) {
-            Constants.LOG.error(
-                    "Rejected MCPatcher authoring document {} from {}: {}",
-                    resourceId,
-                    pack.packId(),
-                    prepared.rejection().orElseThrow());
             return true;
         }
         Properties runtime = prepared.runtimeProperties().orElseThrow();
         String resolvedMethod = runtime.getProperty("method").trim();
         CtmLoader<?> loader = CtmLoaderRegistry.get().getLoader(resolvedMethod);
         if (loader == null) {
-            Constants.LOG.error(
-                    "Rejected MCPatcher execution view {}: native method {} is unavailable",
-                    resourceId,
-                    resolvedMethod);
             return true;
         }
         MCPatcherExtensionContext.call(

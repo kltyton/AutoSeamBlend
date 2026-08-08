@@ -3,7 +3,6 @@ package com.kltyton.autoseamblend.runtime.surface;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.platform.Transparency;
 import com.kltyton.autoseamblend.discovery.SurfaceRepresentativeFacts;
-import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.engine.query.SurfaceFace;
 import com.kltyton.autoseamblend.inference.ConnectionAxis;
 import com.kltyton.autoseamblend.inference.InferenceFacts;
@@ -79,16 +78,11 @@ public final class MinecraftSurfaceCatalog {
         return next;
     }
 
-    /** 中文：根代次提交后清理依赖旧表面的覆盖缓存并记录结果。 / English: Clears overlay caches that depended on old surfaces and records the result after root commit. */
+    /** 中文：根代次提交后清理依赖旧表面的覆盖缓存。 / English: Clears overlay caches that depended on old surfaces after root commit. */
     public static void onPublished(
             Snapshot next) {
         Objects.requireNonNull(next, "next");
         ProceduralConnectionPlan.clearCachedOverlays();
-        Constants.LOG.info(
-                "Published AutoSeamBlend Minecraft surface generation {}: states={}, diagnostics={}",
-                next.generation(),
-                next.states().size(),
-                next.diagnostics().size());
     }
 
     private static Optional<StateSurface> inspect(

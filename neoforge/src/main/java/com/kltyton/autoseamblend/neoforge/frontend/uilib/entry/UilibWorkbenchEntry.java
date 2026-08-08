@@ -36,16 +36,19 @@ public final class UilibWorkbenchEntry {
     public static void onClientTick(
             ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.screen != null
-                || !OPEN_WORKBENCH.consumeClick()) {
+        if (minecraft.screen != null) {
             return;
         }
+        if (OPEN_WORKBENCH.consumeClick()) {
+            open(minecraft);
+            return;
+        }
+    }
+
+    private static void open(Minecraft minecraft) {
         try {
             UilibWorkbenchController.open();
         } catch (RuntimeException exception) {
-            Constants.LOG.warn(
-                    "UILib workbench key entry failed",
-                    exception);
             if (minecraft.player != null) {
                 minecraft.player.sendSystemMessage(
                         Component.translatable(

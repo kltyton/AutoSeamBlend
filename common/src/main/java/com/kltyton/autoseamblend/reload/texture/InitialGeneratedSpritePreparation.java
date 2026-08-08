@@ -1,6 +1,5 @@
 package com.kltyton.autoseamblend.reload.texture;
 
-import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.reload.rule.ManagedRuleRuntime;
 import com.kltyton.autoseamblend.reload.rule.ManagedRuleSnapshot;
 import com.kltyton.autoseamblend.reload.rule.NativeRuleRuntime;
@@ -82,10 +81,6 @@ public final class InitialGeneratedSpritePreparation {
                                             rules,
                                             methods,
                                             generated));
-                            Constants.LOG.info(
-                                    "Prepared in-memory connected-texture sprites before block-atlas stitch: surfaces={}, rejected={}",
-                                    prepared.surfaces().size(),
-                                    prepared.diagnostics().size());
                         },
                         executor);
     }

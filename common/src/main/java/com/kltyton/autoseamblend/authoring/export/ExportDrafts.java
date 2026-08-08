@@ -8,7 +8,6 @@ import com.kltyton.autoseamblend.authoring.model.ManagedAuthoringDraft;
 import com.kltyton.autoseamblend.authoring.model.ManagedAuthoringProjectDrafts;
 import com.kltyton.autoseamblend.authoring.export.NativeDocumentSnapshot;
 import com.kltyton.autoseamblend.engine.EngineFamily;
-import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.authoring.materialize.TextureSourceSnapshot;
 import com.kltyton.autoseamblend.engine.registry.EngineRegistryRuntimeState;
 import com.kltyton.autoseamblend.engine.routing.query.EngineQueryRouterCore;
@@ -291,10 +290,6 @@ public final class ExportDrafts {
                                             .isPresent())
                             .findFirst();
             if (stateSurface.isEmpty()) {
-                Constants.LOG.error(
-                        "EXPORT_CONFIGURED_SURFACE_MISSING: {}",
-                        BuiltInRegistries.BLOCK
-                                .getKey(block));
                 continue;
             }
             BlockState state =

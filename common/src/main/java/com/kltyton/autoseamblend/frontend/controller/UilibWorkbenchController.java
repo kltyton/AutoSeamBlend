@@ -33,6 +33,8 @@ public final class UilibWorkbenchController<T extends WorkbenchDraftFields> {
     private final Thread ownerThread;
     private WorkbenchViewModel<T> view;
     private long publicationVersion;
+    /** 中文：布局代次仅在控件树重建时递增，绘画像素发布不使画布租约失效。 / English: Layout generation advances only on widget-tree rebuilds so pixel publications never invalidate the active canvas lease. */
+    private long layoutGeneration;
     private long nextRequestId;
     private boolean exitRequested;
     private Optional<OperationToken> pendingOperation = Optional.empty();
@@ -58,6 +60,10 @@ public final class UilibWorkbenchController<T extends WorkbenchDraftFields> {
 
     public long publicationVersion() {
         return publicationVersion;
+    }
+
+    public long layoutGeneration() {
+        return layoutGeneration;
     }
 
     public Optional<OperationToken> pendingOperation() {
@@ -298,13 +304,23 @@ public final class UilibWorkbenchController<T extends WorkbenchDraftFields> {
 
     private static boolean requiresLayoutRefresh(
             WorkbenchAction action) {
-        return !(action instanceof WorkbenchAction.PaintStrokeStarted)
-                && !(action instanceof WorkbenchAction.PaintPixel)
-                && !(action instanceof WorkbenchAction.ChoosePaintColor)
-                && !(action instanceof WorkbenchAction.ToggleNeighbor)
-                && !(action instanceof WorkbenchAction.ObserveFace)
-                && !(action instanceof WorkbenchAction.CycleReceiver)
-                && !(action instanceof WorkbenchAction.ClearNeighbors);
+        if (action instanceof WorkbenchAction.PaintStrokeStarted
+                || action instanceof WorkbenchAction.PaintPixel) {
+            // 中文：笔画中的逐像素发布不重建控件树，避免画布实例被替换。
+            // English: Per-pixel publications inside a stroke must not rebuild
+            // the widget tree, or the active canvas instance would be replaced.
+            return false;
+        }
+        if (action instanceof WorkbenchAction.ToggleNeighbor
+                || action instanceof WorkbenchAction.ObserveFace
+                || action instanceof WorkbenchAction.CycleReceiver
+                || action instanceof WorkbenchAction.ClearNeighbors) {
+            // 中文：预览场景直接渲染可变场景状态，无需重建布局。
+            // English: The preview scene renders mutable scene state directly
+            // and does not need a layout rebuild.
+            return false;
+        }
+        return true;
     }
 
     private void replace(
@@ -318,6 +334,9 @@ public final class UilibWorkbenchController<T extends WorkbenchDraftFields> {
                 publicationVersion,
                 1);
         if (notifyLayout) {
+            layoutGeneration = Math.addExact(
+                    layoutGeneration,
+                    1);
             listener.accept(next);
         }
     }

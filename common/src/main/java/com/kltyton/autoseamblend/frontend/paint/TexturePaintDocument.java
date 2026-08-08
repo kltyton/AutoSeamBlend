@@ -71,6 +71,30 @@ public final class TexturePaintDocument {
         return layer().synthetic();
     }
 
+    /**
+     * 中文：当前选中逻辑层是否可编辑；无槽位时安全返回 false。
+     * English: Whether the selected logical layer is editable; safely false when no slot is selected.
+     */
+    public boolean selectedEditable() {
+        return available() && layer().editable();
+    }
+
+    /**
+     * 中文：当前选中逻辑层是否可撤销，由真实历史栈只读派生；无槽位时安全返回 false。
+     * English: Whether the selected logical layer can undo, read-only derived from its real history stack; safely false when no slot is selected.
+     */
+    public boolean canUndo() {
+        return available() && layer().undoAvailable();
+    }
+
+    /**
+     * 中文：当前选中逻辑层是否可重做，由真实历史栈只读派生；无槽位时安全返回 false。
+     * English: Whether the selected logical layer can redo, read-only derived from its real history stack; safely false when no slot is selected.
+     */
+    public boolean canRedo() {
+        return available() && layer().redoAvailable();
+    }
+
     public void selectSlot(int slot) {
         if (!slots.containsKey(slot)) {
             throw new IllegalArgumentException(
@@ -228,7 +252,17 @@ public final class TexturePaintDocument {
                 new LinkedHashMap<>();
         for (LogicalLayer logical : slots.values()) {
             for (Layer layer : logical.layers) {
-                if (!layer.dirty() && !layer.synthetic) {
+                // 中文：未修改的合成层只有在槽位可填充（OMITTED/DECLARED_MISSING）
+                // 时才随保存物化；UNKNOWN/default/skip 即使其他槽位已修改也保持保护，
+                // 不得因 synthetic=true 被刷写进导出或 Managed 载体文件。
+                // English: Unmodified synthetic layers materialize on save only
+                // when the slot is fillable (OMITTED/DECLARED_MISSING).
+                // UNKNOWN/default/skip stay protected even when another slot is
+                // dirty; synthetic=true alone never allows them to be written.
+                if (!layer.dirty()
+                        && !(layer.synthetic
+                                && layer.nativeIntent
+                                        .fillable())) {
                     continue;
                 }
                 CarrierEditBuilder carrier =
@@ -443,6 +477,26 @@ public final class TexturePaintDocument {
             }
             layers.forEach(Layer::redo);
             return true;
+        }
+
+        /**
+         * 中文：只读判断整组是否都可撤销，不执行任何历史操作。
+         * English: Read-only check that every physical layer can undo; executes no history mutation.
+         */
+        private boolean undoAvailable() {
+            return layers.stream()
+                    .allMatch(layer ->
+                            !layer.undo.isEmpty());
+        }
+
+        /**
+         * 中文：只读判断整组是否都可重做，不执行任何历史操作。
+         * English: Read-only check that every physical layer can redo; executes no history mutation.
+         */
+        private boolean redoAvailable() {
+            return layers.stream()
+                    .allMatch(layer ->
+                            !layer.redo.isEmpty());
         }
 
         private boolean dirty() {

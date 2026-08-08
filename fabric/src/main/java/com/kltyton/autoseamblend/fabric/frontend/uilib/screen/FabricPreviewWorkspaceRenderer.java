@@ -21,8 +21,8 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 /**
- * 中文：NeoForge 已验收 InteractiveBlock/PIP 预览的唯一 Loader 渲染工厂。
- * English: Sole Loader renderer factory for the accepted Fabric
+ * 中文：Fabric 渲染工厂，复现 NeoForge 已验收的 InteractiveBlock/PIP 预览。
+ * English: Fabric renderer factory reproducing the NeoForge-accepted
  * InteractiveBlock/PIP preview.
  */
 public final class FabricPreviewWorkspaceRenderer<T extends WorkbenchDraftFields>

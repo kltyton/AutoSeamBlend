@@ -1,6 +1,7 @@
 package com.kltyton.autoseamblend.frontend.controller;
 
 import com.kltyton.autoseamblend.authoring.workbench.PaintTool;
+import com.kltyton.autoseamblend.authoring.workbench.WorkbenchDocument;
 import com.kltyton.autoseamblend.authoring.workbench.WorkbenchDraftFields;
 import com.kltyton.autoseamblend.engine.EngineFamily;
 import com.kltyton.autoseamblend.frontend.model.NativePropertiesViewModel;
@@ -8,8 +9,10 @@ import com.kltyton.autoseamblend.frontend.model.PaintViewModel;
 import com.kltyton.autoseamblend.frontend.model.PreviewViewModel;
 import com.kltyton.autoseamblend.frontend.model.TargetRowView;
 import com.kltyton.autoseamblend.frontend.model.WorkbenchViewModel;
+import com.kltyton.autoseamblend.frontend.paint.TexturePaintDocument;
 import com.kltyton.autoseamblend.frontend.port.WorkbenchActionPort;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -128,6 +131,49 @@ public final class WorkbenchViewMappings {
                 value.editable()));
     }
 
+    /** 中文：从候选行中过滤接收方块已存在于目标库的行，避免同一方块重复添加。 / English: Filters candidate rows whose receiver block already exists in the target library so a block cannot be added twice. */
+    public static List<TargetRowView> availableCandidates(
+            List<TargetRowView> targets,
+            List<TargetRowView> candidates) {
+        Objects.requireNonNull(targets, "targets");
+        Objects.requireNonNull(candidates, "candidates");
+        LinkedHashSet<String> existing = new LinkedHashSet<>();
+        targets.forEach(row -> row.receiverBlockId()
+                .ifPresent(existing::add));
+        return candidates.stream()
+                .filter(row -> row.receiverBlockId()
+                        .filter(existing::contains)
+                        .isEmpty())
+                .toList();
+    }
+
+    /**
+     * 中文：绘画文档变脏时同步会话文档 dirty 状态：条目未修改且有草稿时标记条目修改，
+     * 否则仅触摸修订号；文档已脏或绘画未变脏时原样返回，避免无谓修订号增长。
+     *
+     * English: Syncs the session-document dirty state from a paint document.
+     * Marks the item modified when it is unmodified and has a draft; otherwise
+     * touches the revision. Returns the source unchanged when the document is
+     * already dirty or the paint document is clean, avoiding revision churn.
+     */
+    public static <T extends WorkbenchDraftFields>
+            WorkbenchDocument<T> syncPaintDocument(
+                    WorkbenchDocument<T> source,
+                    WorkbenchDocument.Item<T> item,
+                    TexturePaintDocument paint) {
+        Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(item, "item");
+        Objects.requireNonNull(paint, "paint");
+        if (!paint.dirty() || source.dirty()) {
+            return source;
+        }
+        if (!item.modified() && item.draft().isPresent()) {
+            return source.replace(
+                    item.withDraft(item.draft().orElseThrow()));
+        }
+        return source.touch();
+    }
+
     public static PaintViewModel paint(PaintProjection value) {
         Objects.requireNonNull(value, "value");
         return new PaintViewModel(
@@ -145,6 +191,47 @@ public final class WorkbenchViewMappings {
                 value.canUndo(),
                 value.canRedo(),
                 value.status());
+    }
+
+    /**
+     * 中文：从真实绘画文档投影不可变绘画视图，可编辑/撤销/重做状态由真实历史与槽位证据派生。
+     *
+     * English: Projects an immutable paint view from the real paint document;
+     * editable, undo, and redo state derive from the real slot evidence and
+     * history stacks.
+     */
+    public static PaintViewModel paint(
+            TexturePaintDocument value,
+            Direction selectedFace,
+            Component status) {
+        Objects.requireNonNull(value, "value");
+        Objects.requireNonNull(selectedFace, "selectedFace");
+        Objects.requireNonNull(status, "status");
+        int[] pixels = new int[
+                Math.multiplyExact(
+                        value.width(),
+                        value.height())];
+        for (int y = 0; y < value.height(); y++) {
+            for (int x = 0; x < value.width(); x++) {
+                pixels[y * value.width() + x] =
+                        value.colorAt(x, y);
+            }
+        }
+        return paint(new PaintProjection(
+                value.width(),
+                value.height(),
+                pixels,
+                selectedFace,
+                value.slotIndices(),
+                value.selectedSlot(),
+                value.selectedSynthetic(),
+                value.tool(),
+                value.color(),
+                value.brushSize(),
+                value.selectedEditable(),
+                value.canUndo(),
+                value.canRedo(),
+                status));
     }
 
     public static PreviewViewModel withSurface(

@@ -187,8 +187,21 @@ public enum CtmModConnectionTextureSourceProvider
                     : NativeSlotIntent.UNKNOWN;
         } else if (authoringTemplate) {
             intent = NativeSlotIntent.OMITTED;
-        } else {
+        } else if (resolved.declared()
+                || resolved.textureId().isPresent()) {
+            // 中文：已声明或带纹理引用的作者载体无法归类时保留 UNKNOWN，
+            // 不覆盖作者意图（default/skip 与未知结果仍受保护）。
+            // English: Authored carriers that are declared or reference a
+            // texture stay UNKNOWN when unclassifiable; author intent,
+            // default/skip, and unknown results remain protected.
             intent = NativeSlotIntent.UNKNOWN;
+        } else {
+            // 中文：未声明且无纹理引用的合成载体（布局回退）视为 OMITTED，
+            // 使其保持可填充并可编辑，恢复 CTM 编辑连接纹理能力。
+            // English: Undeclared textureless synthetic carriers (layout
+            // fallback) are OMITTED so they stay fillable and editable,
+            // restoring CTM connected-texture editing.
+            intent = NativeSlotIntent.OMITTED;
         }
         TextureSourceSnapshot source = captured
                 .orElseGet(() -> synthetic(

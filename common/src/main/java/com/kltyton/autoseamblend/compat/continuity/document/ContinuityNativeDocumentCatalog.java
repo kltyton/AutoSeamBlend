@@ -58,13 +58,48 @@ public final class ContinuityNativeDocumentCatalog implements Hooks {
             document(
                     ResourceManager resources,
                     Identifier resourceId) {
+        return lookup(resources, resourceId)
+                .document();
+    }
+
+    /**
+     * 中文：单次原子查询结果；ownerMatches 表示目录归属的资源管理器与查询一致，
+     * document 为命中文档（可能为空），两个字段来自同一次同步查询。
+     *
+     * English: Result of one atomic lookup; ownerMatches reports whether the
+     * catalog's current resource manager matches the query, and document is the
+     * hit (possibly empty). Both fields come from the same synchronized query.
+     */
+    public record NativeDocumentLookup(
+            boolean ownerMatches,
+            Optional<NativeDocument> document) {
+        public NativeDocumentLookup {
+            document = Objects.requireNonNull(
+                    document,
+                    "document");
+        }
+    }
+
+    /**
+     * 中文：在一次同步临界区内同时返回所有权与文档命中，避免调用方分两次观察不一致状态。
+     *
+     * English: Returns ownership and document hit inside one synchronized
+     * section so callers never observe a split state across two queries.
+     */
+    public static synchronized NativeDocumentLookup
+            lookup(
+                    ResourceManager resources,
+                    Identifier resourceId) {
         Objects.requireNonNull(resources, "resources");
         Objects.requireNonNull(resourceId, "resourceId");
-        if (owner != resources) {
-            return Optional.empty();
-        }
-        return Optional.ofNullable(
-                DOCUMENTS.get(resourceId));
+        boolean ownerMatches = owner == resources;
+        Optional<NativeDocument> hit = ownerMatches
+                ? Optional.ofNullable(
+                        DOCUMENTS.get(resourceId))
+                : Optional.empty();
+        return new NativeDocumentLookup(
+                ownerMatches,
+                hit);
     }
 
     public record NativeDocument(

@@ -60,10 +60,16 @@ public enum ContinuityConnectionTextureSourceProvider
                         draft);
         TextureSourceSnapshot base =
                 inputs.source();
+        Identifier lookupResourceId =
+                ContinuityMaterializePathPlanner
+                        .documentResourceId(
+                                document.sourceDocumentPath());
+        ContinuityNativeDocumentCatalog.NativeDocumentLookup lookup =
+                ContinuityNativeDocumentCatalog.lookup(
+                        minecraft.getResourceManager(),
+                        lookupResourceId);
         Map<Integer, NativeSlot> nativeSlots =
-                nativeSlots(
-                        minecraft,
-                        document);
+                nativeSlots(lookup);
         boolean authoringTemplate =
                 ConnectionTextureSources
                         .managedAuthoringTemplate(
@@ -139,24 +145,15 @@ public enum ContinuityConnectionTextureSourceProvider
 
     private static Map<Integer, NativeSlot>
             nativeSlots(
-                    Minecraft minecraft,
-                    NativePropertyDocumentLoader document) {
-        Identifier resourceId =
-                ContinuityMaterializePathPlanner
-                        .documentResourceId(
-                                document.sourceDocumentPath());
+                    ContinuityNativeDocumentCatalog.NativeDocumentLookup lookup) {
         LinkedHashMap<Integer, NativeSlot>
                 slots = new LinkedHashMap<>();
-        ContinuityNativeDocumentCatalog
-                .document(
-                        minecraft.getResourceManager(),
-                        resourceId)
-                .ifPresent(nativeDocument ->
-                        nativeDocument.slots()
-                                .forEach(slot ->
-                                        slots.put(
-                                                slot.index(),
-                                                slot)));
+        lookup.document().ifPresent(nativeDocument ->
+                nativeDocument.slots()
+                        .forEach(slot ->
+                                slots.put(
+                                        slot.index(),
+                                        slot)));
         return Map.copyOf(slots);
     }
 

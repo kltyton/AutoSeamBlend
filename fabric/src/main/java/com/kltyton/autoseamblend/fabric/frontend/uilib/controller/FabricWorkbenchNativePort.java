@@ -72,8 +72,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 /**
- * 中文：NeoForge 原生工作台端口；只保留注册表、原生文档、真实预览/绘画和保存导出服务的适配。
- * English: NeoForge native workbench port; only registry, native-document,
+ * 中文：Fabric 原生工作台端口；只保留注册表、原生文档、真实预览/绘画和保存导出服务的适配。
+ * English: Fabric native workbench port; only registry, native-document,
  * real preview/paint, and persistence/export adapters remain here.
  */
 final class FabricWorkbenchNativePort
@@ -289,9 +289,10 @@ final class FabricWorkbenchNativePort
             return rejected(frozen, "TARGET_ALREADY_PRESENT");
         }
         sources.put(entry.entryKey(), entry);
-        List<TargetRowView> available = frozen.availableTargets().stream()
-                .filter(row -> row.receiverBlockId().filter(blockId::equals).isEmpty())
-                .toList();
+        List<TargetRowView> available =
+                WorkbenchViewMappings.availableCandidates(
+                        rows(document),
+                        frozen.availableTargets());
         return WorkbenchViewReducer.copy(
                 frozen,
                 document,
@@ -560,10 +561,12 @@ final class FabricWorkbenchNativePort
         if (action instanceof WorkbenchAction.UndoPaint) document.undo();
         if (action instanceof WorkbenchAction.RedoPaint) document.redo();
         WorkbenchDocument.Item<ManagedAuthoringDraft> item = requireItem(frozen, key);
-        WorkbenchDocument<ManagedAuthoringDraft> next = frozen.document();
-        if (document.dirty() && !item.modified() && item.draft().isPresent()) {
-            next = next.replace(item.withDraft(item.draft().orElseThrow()));
-        }
+        WorkbenchDocument<ManagedAuthoringDraft> next =
+                WorkbenchViewMappings.syncPaintDocument(
+                        frozen.document(),
+                        item,
+                        document);
+        PaintViewModel paint = paintView(document, key);
         return WorkbenchViewReducer.copy(
                 frozen,
                 next,
@@ -572,7 +575,7 @@ final class FabricWorkbenchNativePort
                 frozen.availableTargets(),
                 frozen.selectedEntryKey(),
                 frozen.preview(),
-                Optional.of(paintView(document, key)),
+                Optional.of(paint),
                 frozen.properties(),
                 document.dirty()
                         ? Component.translatable("gui.autoseamblend.status.modified")
@@ -592,10 +595,11 @@ final class FabricWorkbenchNativePort
             return;
         }
         WorkbenchDocument.Item<ManagedAuthoringDraft> item = requireItem(session.view(), key);
-        WorkbenchDocument<ManagedAuthoringDraft> next = session.view().document();
-        if (adapter.document().dirty() && !item.modified() && item.draft().isPresent()) {
-            next = next.replace(item.withDraft(item.draft().orElseThrow()));
-        }
+        WorkbenchDocument<ManagedAuthoringDraft> next =
+                WorkbenchViewMappings.syncPaintDocument(
+                        session.view().document(),
+                        item,
+                        adapter.document());
         WorkbenchViewModel<ManagedAuthoringDraft> view = WorkbenchViewReducer.copy(
                 session.view(),
                 next,
@@ -676,7 +680,9 @@ final class FabricWorkbenchNativePort
                 view.document(),
                 view.mode(),
                 view.targets(),
-                List.copyOf(candidates),
+                WorkbenchViewMappings.availableCandidates(
+                        current.targets(),
+                        List.copyOf(candidates)),
                 List.copyOf(selectors),
                 view.selectedEntryKey(),
                 view.preview(),
@@ -1052,28 +1058,14 @@ final class FabricWorkbenchNativePort
     }
 
     private PaintViewModel paintView(TexturePaintDocument value, String key) {
-        int[] pixels = new int[Math.multiplyExact(value.width(), value.height())];
-        for (int y = 0; y < value.height(); y++) {
-            for (int x = 0; x < value.width(); x++) {
-                pixels[y * value.width() + x] = value.colorAt(x, y);
-            }
-        }
+        // 中文：绘画视图投影由 common 派生真实可编辑/撤销/重做状态，Loader 只提供当前面。
+        // English: Paint view projection derives real editable/undo/redo state in
+        // common; the loader only supplies the current face.
         return WorkbenchViewMappings.paint(
-                new WorkbenchViewMappings.PaintProjection(
-                        value.width(),
-                        value.height(),
-                        pixels,
-                        paintFaces.getOrDefault(key, Direction.NORTH),
-                        value.slotIndices(),
-                        value.selectedSlot(),
-                        value.selectedSynthetic(),
-                        value.tool(),
-                        value.color(),
-                        value.brushSize(),
-                        true,
-                        true,
-                        true,
-                        Component.translatable("gui.autoseamblend.status.ready")));
+                value,
+                paintFaces.getOrDefault(key, Direction.NORTH),
+                Component.translatable(
+                        "gui.autoseamblend.status.ready"));
     }
 
     private NativePropertiesViewModel propertyView(NativePropertyDocumentLoader value) {

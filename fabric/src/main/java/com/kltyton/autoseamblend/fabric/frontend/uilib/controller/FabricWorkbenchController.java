@@ -18,7 +18,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
 /**
- * 中文：NeoForge 仅组合原生端口与 common 工作台；会话、布局、控件和操作令牌均由 common 拥有。
+ * 中文：Fabric 仅组合原生端口与 common 工作台；会话、布局、控件和操作令牌均由 common 拥有。
  * English: Fabric only composes its native port with the common workbench;
  * common owns the session, layout, widgets, and operation tokens.
  */

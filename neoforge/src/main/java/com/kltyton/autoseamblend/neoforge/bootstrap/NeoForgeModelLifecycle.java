@@ -1,5 +1,6 @@
 package com.kltyton.autoseamblend.neoforge.bootstrap;
 
+import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.engine.routing.ModelOwnershipRuntime;
 import com.kltyton.autoseamblend.neoforge.runtime.culling.GlassPaneSeamCulling;
 import com.kltyton.autoseamblend.runtime.publication.ReloadPublication;
@@ -19,6 +20,11 @@ public final class NeoForgeModelLifecycle {
                 ReloadPublication.pendingPreparation()
                         .orElse(null);
         if (prepared == null) {
+            if (!GeneratedSpritePlanning.hasInitialPlanners()) {
+                return;
+            }
+            Constants.LOG.error(
+                    "Retained the active reload generation because model bake has no complete pre-atlas candidate");
             return;
         }
         long generation = prepared.generation();
@@ -35,7 +41,7 @@ public final class NeoForgeModelLifecycle {
                             models,
                             prepared.preparedMethods(),
                             generation);
-            GlassPaneSeamCulling.install(
+            int paneModels = GlassPaneSeamCulling.install(
                     models,
                     prepared.selectors(),
                     prepared.preparedMethods(),
@@ -43,6 +49,9 @@ public final class NeoForgeModelLifecycle {
             ReloadPublication.stageModelFacts(
                     ownership,
                     surfaces);
+            Constants.LOG.info(
+                    "Prepared vanilla pane-cap culling for {} eligible block states",
+                    paneModels);
         } catch (RuntimeException exception) {
             if (ownership != null) {
                 ModelOwnershipRuntime.abort(

@@ -1,5 +1,6 @@
 package com.kltyton.autoseamblend.bootstrap;
 
+import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.platform.Services;
 import com.kltyton.autoseamblend.platform.services.IPlatformHelper;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -14,6 +15,13 @@ public final class CommonClass {
         if (!INITIALIZED.compareAndSet(false, true)) {
             return;
         }
+        IPlatformHelper platform = Services.platform();
+        Constants.LOG.info(
+                "Starting {} {} on {} ({})",
+                Constants.MOD_NAME,
+                Constants.VERSION,
+                platform.getPlatformName(),
+                platform.getEnvironmentName());
     }
 
     public static boolean isInitialized() {

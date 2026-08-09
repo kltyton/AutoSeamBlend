@@ -23,7 +23,8 @@ dependencies {
     implementation("me.fzzyhmstrs:fzzy_config:${fzzy_config_fabric_version}")
 
     // UILib is bundled through Fabric Loom's native non-transitive Jar-in-Jar configuration.
-    include(implementation("com.daqem.uilib:uilib-fabric:${uilib_version}"))
+    implementation("com.daqem.uilib:uilib-fabric:${uilib_version}")
+    include("com.daqem.uilib:uilib-fabric:${uilib_version}")
 
     // This module uses Loom's no-remap plugin because all modules share Mojang
     // names. Normal compile/runtime configurations therefore provide the
@@ -33,10 +34,17 @@ dependencies {
     compileOnly("curse.maven:athena-841890:${athena_fabric_file}")
     runtimeOnly(validationEngineDependencies[validationEngine])
 
-    testImplementation platform('org.junit:junit-bom:5.10.3')
+    testImplementation platform('org.junit:junit-bom:6.1.3')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     // Exact M6 adapter target for real loader/holder characterization; test scope only, never bundled.
     testImplementation("maven.modrinth:continuity:${continuity_fabric_version}")
+    // 中文：仅测试范围加载全部可选引擎，保证三个引擎的 contract 测试类在运行时可见；
+    // 不改变 runClient 的 runtimeOnly 单引擎隔离，也不改动生产运行时依赖。
+    // English: Test scope only, making every optional engine's contract classes loadable at
+    // test runtime; runClient keeps the runtimeOnly single-engine isolation and production
+    // runtime dependencies are unchanged.
+    testImplementation("maven.modrinth:fusion-connected-textures:${fusion_fabric_version}")
+    testImplementation("curse.maven:athena-841890:${athena_fabric_file}")
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

@@ -1,5 +1,6 @@
 package com.kltyton.autoseamblend.runtime.selection;
 
+import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.selection.compiled.ConnectionRuleSet;
 import com.kltyton.autoseamblend.selection.compiled.CompiledSelectorState;
 import com.kltyton.autoseamblend.selection.compiled.CompiledSelectorView;
@@ -45,6 +46,12 @@ public final class RuleRuntime {
         }
         Snapshot next = publication().publish(
                 prepared.orElseThrow());
+        Constants.LOG.info(
+                "Published AutoSeamBlend selector generation {}: selectors={}, targets={}, reason={}",
+                next.generation(),
+                next.selectorCount(),
+                next.rules().targetCount(),
+                reason);
         return next;
     }
 
@@ -55,10 +62,24 @@ public final class RuleRuntime {
         SelectorGenerationLifecycle.Preparation preparation =
                 SelectorGenerationLifecycle.prepare(reason, generation);
         SelectorGenerationCompiler.Result<Block> compiled = preparation.compiled();
+        compiled.deferredSelectors().forEach(message ->
+                Constants.LOG.info("AutoSeamBlend config selector {}", message));
+        compiled.diagnostics().forEach(message ->
+                Constants.LOG.warn("AutoSeamBlend config: {}", message));
         if (!compiled.valid()) {
+            Constants.LOG.error(
+                    "Rejected AutoSeamBlend selector candidate; retained generation {} reason={}",
+                    current().generation(),
+                    reason);
             return java.util.Optional.empty();
         }
         Snapshot next = new Snapshot(compiled.stateOrThrow());
+        Constants.LOG.info(
+                "Prepared AutoSeamBlend selector generation {}: selectors={}, targets={}, reason={}",
+                next.generation(),
+                next.selectorCount(),
+                next.rules().targetCount(),
+                reason);
         return java.util.Optional.of(next);
     }
 

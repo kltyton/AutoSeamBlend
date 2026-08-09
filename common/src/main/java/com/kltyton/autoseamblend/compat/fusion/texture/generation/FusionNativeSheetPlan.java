@@ -19,10 +19,10 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * 中文：调用锁定 Fusion 1.3.5 布局处理器派生物理纹理表，不复制 ARR 槽位表；Fabric 与 NeoForge
+ * 中文：调用锁定 Fusion 1.3.12 布局处理器派生物理纹理表，不复制 ARR 槽位表；Fabric 与 NeoForge
  * 只提供各自 Loader 的 Fusion 运行时依赖。
  *
- * English: Derives the physical sheet by invoking the locked Fusion 1.3.5 layout handler without
+ * English: Derives the physical sheet by invoking the locked Fusion 1.3.12 layout handler without
  * copying its ARR slot table; Fabric and NeoForge only provide their Loader-local Fusion runtime.
  */
 public record FusionNativeSheetPlan(

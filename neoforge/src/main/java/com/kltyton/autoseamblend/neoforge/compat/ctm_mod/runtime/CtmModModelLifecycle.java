@@ -1,5 +1,6 @@
 package com.kltyton.autoseamblend.neoforge.compat.ctm_mod.runtime;
 
+import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.runtime.surface.MinecraftSurfaceCatalog;
 import com.kltyton.autoseamblend.runtime.publication.ReloadPublication;
 import java.util.Map;
@@ -17,13 +18,18 @@ public final class CtmModModelLifecycle {
                 event.getBakingResult().blockStateModels();
         MinecraftSurfaceCatalog.Snapshot surfaces =
                 ReloadPublication.modelDecorationSurfaces();
+        int[] decorated = {0};
         models.replaceAll((state, model) -> {
             if (!surfaces.states().containsKey(state)) {
                 return model;
             }
+            decorated[0]++;
             return new CtmModConnectedBlockStateModel(
                     model,
                     state);
         });
+        Constants.LOG.info(
+                "Installed CTM Lib-native AutoBlend model routing for {} block states",
+                decorated[0]);
     }
 }

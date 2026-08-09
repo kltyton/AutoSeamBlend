@@ -32,11 +32,13 @@ public final class GeneratedSpriteSource implements SpriteSource {
                     SourceMetadata metadata =
                             definition.loadSourceMetadata(resources);
                     definition.tiles()
-                            .forEach(tile -> output.add(
-                                    tile.spriteId(),
-                                    loader -> definition.load(
-                                            tile,
-                                            metadata)));
+                            .forEach(tile -> {
+                                output.add(
+                                        tile.spriteId(),
+                                        loader -> definition.load(
+                                                tile,
+                                                metadata));
+                            });
                 });
         GeneratedSpriteSetCatalog.markPrepared(snapshot.generation());
     }

@@ -199,9 +199,10 @@ final class NeoForgeWorkbenchNativePort
             }
             return frozen;
         } catch (IOException | RuntimeException failure) {
-            return rejected(
-                    frozen,
-                    FailureDetails.message(failure, "WORKBENCH_ACTION_FAILED"));
+            String detail = FailureDetails.message(
+                    failure,
+                    "WORKBENCH_ACTION_FAILED");
+            return rejected(frozen, detail);
         }
     }
 
@@ -550,12 +551,16 @@ final class NeoForgeWorkbenchNativePort
             return rejected(frozen, "PAINT_UNAVAILABLE");
         }
         TexturePaintDocument document = adapter.document();
+        if (action instanceof WorkbenchAction.PaintPixel pixel) {
+            document.apply(
+                    pixel.x(),
+                    pixel.y());
+        }
         if (action instanceof WorkbenchAction.ChoosePaintTool value) document.setTool(value.tool());
         if (action instanceof WorkbenchAction.ChoosePaintColor value) document.setColor(value.straightArgb());
         if (action instanceof WorkbenchAction.SelectPaintSlot value) document.selectSlot(value.slot());
         if (action instanceof WorkbenchAction.SelectPaintFace value) paintFaces.put(key, value.face());
         if (action instanceof WorkbenchAction.PaintStrokeStarted) document.beginStroke();
-        if (action instanceof WorkbenchAction.PaintPixel value) document.apply(value.x(), value.y());
         if (action instanceof WorkbenchAction.PaintStrokeEnded) document.endStroke();
         if (action instanceof WorkbenchAction.CycleBrushSize) document.cycleBrushSize();
         if (action instanceof WorkbenchAction.UndoPaint) document.undo();
@@ -632,7 +637,8 @@ final class NeoForgeWorkbenchNativePort
                 .orElse(current.observedFace());
         WorkbenchViewModel<ManagedAuthoringDraft> view = WorkbenchViewMappings.withPreview(
                 session.view(), neighbors, face, current.receiverVariant());
-        session.publish(session.publicationVersion(), view);
+        session.publish(
+                session.publicationVersion(), view);
     }
 
     Optional<PreviewSceneState> previewScene(String key) {
@@ -778,9 +784,6 @@ final class NeoForgeWorkbenchNativePort
                         if (!result.success()) {
                             return failed(operation.view(), new IllegalStateException(result.detail()));
                         }
-                        if (result.failure() != null) {
-                            return failed(operation.view(), result.failure());
-                        }
                         WorkbenchViewModel<ManagedAuthoringDraft> settled = WorkbenchViewReducer.copy(
                                 operation.view(),
                                 operation.view().document()
@@ -805,7 +808,8 @@ final class NeoForgeWorkbenchNativePort
                                         result.selectionChanged()));
                     });
         } catch (IOException | RuntimeException failure) {
-            return CompletableFuture.completedFuture(failed(operation.view(), failure));
+            return CompletableFuture.completedFuture(
+                    failed(operation.view(), failure));
         }
     }
 

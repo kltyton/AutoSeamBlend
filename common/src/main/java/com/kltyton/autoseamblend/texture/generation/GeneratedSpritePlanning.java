@@ -2,6 +2,7 @@ package com.kltyton.autoseamblend.texture.generation;
 
 import com.kltyton.autoseamblend.texture.atlas.GeneratedSpriteSet;
 import com.kltyton.autoseamblend.texture.atlas.GeneratedSpriteSetCatalog;
+import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.reload.surface.InitialSurfacePreparation;
 import com.kltyton.autoseamblend.runtime.publication.ReloadPublication;
 import com.kltyton.autoseamblend.runtime.selection.RuleRuntime;
@@ -42,6 +43,11 @@ public final class GeneratedSpritePlanning {
                 GeneratedSpriteSetCatalog.prepare(
                         combined,
                         planningView.generation());
+        Constants.LOG.info(
+                "Prepared AutoSeamBlend generated-sprite generation {}: owners={}, sets={}",
+                catalog.generation(),
+                INITIAL_PLANNERS.size(),
+                catalog.definitions().size());
         return catalog;
     }
 

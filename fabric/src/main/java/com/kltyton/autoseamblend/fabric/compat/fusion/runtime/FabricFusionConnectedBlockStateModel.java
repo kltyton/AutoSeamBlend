@@ -5,6 +5,7 @@ import com.kltyton.autoseamblend.compat.fusion.runtime.texture.FusionGeneratedSt
 import com.kltyton.autoseamblend.engine.EngineFamily;
 import com.kltyton.autoseamblend.engine.routing.EngineQueryRouter;
 import com.kltyton.autoseamblend.engine.routing.query.EngineQuerySelection;
+import com.kltyton.autoseamblend.fabric.runtime.texture.FabricBlockAtlasSpriteFinder;
 import com.kltyton.autoseamblend.runtime.overlay.OverlayDonorResolution;
 import com.kltyton.autoseamblend.runtime.overlay.OverlayDonorResolver.Donor;
 import com.kltyton.autoseamblend.runtime.publication.ReloadPublication;
@@ -28,6 +29,7 @@ import net.fabricmc.fabric.api.client.model.loading.v1.wrapper.WrapperBlockState
 import net.fabricmc.fabric.api.client.renderer.v1.mesh.MutableQuadView;
 import net.fabricmc.fabric.api.client.renderer.v1.mesh.QuadEmitter;
 import net.fabricmc.fabric.api.client.renderer.v1.Renderer;
+import net.fabricmc.fabric.api.client.renderer.v1.sprite.SpriteFinder;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
@@ -98,7 +100,8 @@ public final class FabricFusionConnectedBlockStateModel
                     level,
                     pos,
                     state,
-                    random);
+                    random,
+                    cullTest);
             return null;
         });
     }
@@ -109,24 +112,26 @@ public final class FabricFusionConnectedBlockStateModel
             BlockAndTintGetter level,
             BlockPos pos,
             BlockState state,
-            RandomSource random) {
+            RandomSource random,
+            Predicate<Direction> cullTest) {
         long seed = random.nextLong();
+        SpriteFinder spriteFinder =
+                FabricBlockAtlasSpriteFinder.current();
         BufferingEmitter buffer =
-                new BufferingEmitter(
-                        Renderer.get()
-                                .quadEmitter(ignored -> {}));
+                new BufferingEmitter(spriteFinder);
         super.emitQuads(
                 buffer,
                 level,
                 pos,
                 state,
                 RandomSource.create(seed),
-                ignored -> false);
+                cullTest);
         RuleRuntime.Snapshot rules =
                 generation.selectors();
         MinecraftSurfaceCatalog.Snapshot surfaces =
                 generation.surfaces();
-        for (BakedQuad quad : buffer.quads()) {
+        for (BufferedQuad buffered : buffer.quads()) {
+            BakedQuad quad = buffered.quad();
             TextureAtlasSprite sprite =
                     quad.materialInfo().sprite();
             Optional<EngineQuerySelection> selection =
@@ -142,7 +147,10 @@ public final class FabricFusionConnectedBlockStateModel
                             != EngineFamily.FUSION
                     || !selection.orElseThrow()
                             .runsAutoBlend()) {
-                emitter.fromBakedQuad(quad).emit();
+                prepareEmission(
+                        emitter,
+                        buffered,
+                        quad).emit();
                 continue;
             }
             Optional<FaceSurface> face =
@@ -151,7 +159,10 @@ public final class FabricFusionConnectedBlockStateModel
                             quad.direction(),
                             sprite);
             if (face.isEmpty()) {
-                emitter.fromBakedQuad(quad).emit();
+                prepareEmission(
+                        emitter,
+                        buffered,
+                        quad).emit();
                 continue;
             }
             FaceSurface surface = face.orElseThrow();
@@ -165,7 +176,7 @@ public final class FabricFusionConnectedBlockStateModel
                     state,
                     inferenceSurface);
             if (method == ConnectionMethod.TOP) {
-                BakedQuad top =
+                Optional<TextureAtlasSprite> topSprite =
                         MinecraftTopSurfaceResolver
                                 .resolve(
                                         level,
@@ -173,14 +184,18 @@ public final class FabricFusionConnectedBlockStateModel
                                         state,
                                         quad.direction(),
                                         rules.rules(),
-                                        surfaces)
-                                .map(topSprite ->
+                                        surfaces);
+                BakedQuad top = topSprite
+                                .map(topTexture ->
                                         FusionNativeQuadProcessor
                                                 .retexture(
                                                         quad,
-                                                        topSprite))
+                                                        topTexture))
                                 .orElse(quad);
-                emitter.fromBakedQuad(top).emit();
+                prepareEmission(
+                        emitter,
+                        buffered,
+                        top).emit();
                 continue;
             }
             if (FusionSheetMethodPlan.isReplacement(method)) {
@@ -195,7 +210,10 @@ public final class FabricFusionConnectedBlockStateModel
                                 generation,
                                 rules);
                 if (processor.isEmpty()) {
-                    emitter.fromBakedQuad(quad).emit();
+                    prepareEmission(
+                            emitter,
+                            buffered,
+                            quad).emit();
                     continue;
                 }
                 List<BakedQuad> replacements =
@@ -206,15 +224,25 @@ public final class FabricFusionConnectedBlockStateModel
                                         state,
                                         seed);
                 if (replacements.isEmpty()) {
-                    emitter.fromBakedQuad(quad).emit();
+                    prepareEmission(
+                            emitter,
+                            buffered,
+                            quad).emit();
                 } else {
-                    replacements.forEach(replacement ->
-                            emitter.fromBakedQuad(replacement)
-                                    .emit());
+                    for (BakedQuad replacement
+                            : replacements) {
+                        prepareEmission(
+                                emitter,
+                                buffered,
+                                replacement).emit();
+                    }
                 }
                 continue;
             }
-            emitter.fromBakedQuad(quad).emit();
+            prepareEmission(
+                    emitter,
+                    buffered,
+                    quad).emit();
             if (!method.overlayCapable()
                     || !surface.fullFace()
                     || !surface.facts()
@@ -249,29 +277,62 @@ public final class FabricFusionConnectedBlockStateModel
                 if (overlay.isEmpty()) {
                     continue;
                 }
-                overlay.orElseThrow()
-                        .process(
-                                level,
-                                pos,
+                List<BakedQuad> overlayReplacements =
+                        overlay.orElseThrow()
+                                .process(
+                                        level,
+                                        pos,
                                 donor.state(),
-                                seed)
-                        .forEach(replacement ->
-                                emitOverlayQuad(
-                                        emitter,
-                                        replacement,
-                                        tint));
+                                        seed);
+                if (overlayReplacements.isEmpty()) {
+                    continue;
+                }
+                for (BakedQuad replacement
+                        : overlayReplacements) {
+                    emitOverlayQuad(
+                            emitter,
+                            buffered,
+                            replacement,
+                            tint);
+                }
             }
         }
     }
 
+    /**
+     * 中文：最终发射前的统一准备：fromBakedQuad 后恢复源 quad 的 cull/nominal/tag。
+     * 26.1.2 BakedQuad 不保留 cullFace，PaneCapCullTransform 写入的端盖剔除桶必须
+     * 在这里重新挂回；passthrough/top/native/none/overlay/empty 全部发射分支共用。
+     *
+     * English: Shared final-emission preparation: after fromBakedQuad, restore the
+     * source quad's cull/nominal/tag. The 26.1.2 BakedQuad does not retain
+     * cullFace, so the pane cap cull bucket written by PaneCapCullTransform must
+     * be re-applied here; passthrough/top/native/none/overlay/empty all share it.
+     */
+    private static QuadEmitter prepareEmission(
+            QuadEmitter emitter,
+            BufferedQuad source,
+            BakedQuad output) {
+        QuadEmitter prepared =
+                emitter.fromBakedQuad(output);
+        prepared.cullFace(source.cullFace());
+        prepared.nominalFace(source.nominalFace());
+        prepared.tag(source.tag());
+        return prepared;
+    }
+
     private static void emitOverlayQuad(
             QuadEmitter emitter,
+            BufferedQuad source,
             BakedQuad replacement,
             int tint) {
         QuadEmitter output =
-                emitter.fromBakedQuad(replacement);
-        // 中文：Fusion 1.3.5 Fabric 在发射时才解析颜色；固定 overlay ARGB 直接写入顶点色。
-        // English: Fusion 1.3.5 Fabric resolves colors at emission; write the
+                prepareEmission(
+                        emitter,
+                        source,
+                        replacement);
+        // 中文：Fusion 1.3.12 Fabric 在发射时才解析颜色；固定 overlay ARGB 直接写入顶点色。
+        // English: Fusion 1.3.12 Fabric resolves colors at emission; write the
         // fixed overlay ARGB into vertex colors.
         for (int vertex = 0;
                 vertex < 4;
@@ -383,16 +444,43 @@ public final class FabricFusionConnectedBlockStateModel
     private static final class BufferingEmitter
             implements QuadEmitter {
         private final QuadEmitter delegate;
-        private final ArrayList<BakedQuad> quads =
+        private final SpriteFinder spriteFinder;
+        private final ArrayList<BufferedQuad> quads =
                 new ArrayList<>();
 
-        private BufferingEmitter(QuadEmitter delegate) {
+        private BufferingEmitter(
+                SpriteFinder spriteFinder) {
+            this.spriteFinder = Objects.requireNonNull(
+                    spriteFinder,
+                    "spriteFinder");
+            // 中文：真实 Renderer emitter 在 emit() 时先应用 pushTransform 的
+            // Fusion QuadTransform 栈，再把 transform 后的 quad 交给本回调；
+            // 回调负责把它转成 BakedQuad 并记入 quads，避免捕获 transform 前状态。
+            // English: The real Renderer emitter applies the pushed Fusion
+            // QuadTransform stack on emit() and then hands the transformed quad
+            // to this callback; the callback converts it to a BakedQuad and
+            // records it, so the pre-transform state is never captured.
             this.delegate = Objects.requireNonNull(
-                    delegate,
+                    Renderer.get().quadEmitter(emitted -> {
+                        TextureAtlasSprite sprite =
+                                spriteFinder.find(emitted);
+                        // 中文：toBakedQuad 前捕获 transform 后的 cull/nominal/tag；
+                        // 26.1.2 BakedQuad 不保留 cullFace，重发射前必须恢复。
+                        // English: capture the transformed cull/nominal/tag before
+                        // toBakedQuad; the 26.1.2 BakedQuad drops cullFace, which
+                        // must be restored before re-emission.
+                        quads.add(
+                                new BufferedQuad(
+                                        emitted.toBakedQuad(
+                                                sprite),
+                                        emitted.cullFace(),
+                                        emitted.nominalFace(),
+                                        emitted.tag()));
+                    }),
                     "delegate");
         }
 
-        private List<BakedQuad> quads() {
+        private List<BufferedQuad> quads() {
             return List.copyOf(quads);
         }
 
@@ -569,13 +657,7 @@ public final class FabricFusionConnectedBlockStateModel
 
         @Override
         public QuadEmitter emit() {
-            quads.add(
-                    delegate.toBakedQuad(
-                            me.pepperbell.continuity.client.util.RenderUtil
-                                    .getSpriteFinder()
-                                    .find(delegate)));
             delegate.emit();
-            delegate.clear();
             return this;
         }
 
@@ -745,6 +827,12 @@ public final class FabricFusionConnectedBlockStateModel
             delegate.popTransform();
         }
     }
+
+    private record BufferedQuad(
+            BakedQuad quad,
+            Direction cullFace,
+            Direction nominalFace,
+            int tag) {}
 
     private record ProcessorKey(
             RuleRuntime.Snapshot ruleSnapshot,

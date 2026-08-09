@@ -2,6 +2,7 @@ package com.kltyton.autoseamblend.neoforge.compat.fusion.runtime;
 
 import com.kltyton.autoseamblend.mixin.fusion.BlockModelModifierPropertiesAccessor;
 import com.kltyton.autoseamblend.compat.fusion.runtime.FusionAcceptedModifierDocumentCatalog.Snapshot;
+import com.kltyton.autoseamblend.compat.fusion.runtime.FusionModifierDocumentLocation;
 import com.kltyton.autoseamblend.engine.query.NativeDocumentIdentity;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -9,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.level.block.state.BlockState;
@@ -22,8 +22,6 @@ import net.minecraft.world.level.block.state.BlockState;
  * parser.
  */
 public final class FusionAcceptedModifierDocumentCatalog {
-    private static final FileToIdConverter ID_CONVERTER =
-            FileToIdConverter.json("fusion/model_modifiers/blocks");
     private FusionAcceptedModifierDocumentCatalog() {}
 
     /**
@@ -73,7 +71,8 @@ public final class FusionAcceptedModifierDocumentCatalog {
                                                 property)
                                         .autoseamblend$location();
                         Identifier resourceId =
-                                ID_CONVERTER.idToFile(stripped);
+                                FusionModifierDocumentLocation
+                                        .resourceId(stripped);
                         // 中文：身份映射由 common catalog 保存，Loader 只读取当前 reload 胜者。
                         // English: The common catalog stores identity mappings; the Loader only reads the current winner.
                         com.kltyton.autoseamblend.compat.fusion.runtime

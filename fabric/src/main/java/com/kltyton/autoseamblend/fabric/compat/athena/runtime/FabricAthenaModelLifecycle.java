@@ -3,9 +3,8 @@ package com.kltyton.autoseamblend.fabric.compat.athena.runtime;
 import com.kltyton.autoseamblend.fabric.compat.athena.runtime.pane.FabricAthenaGeneratedPaneModelFactory;
 import com.kltyton.autoseamblend.runtime.publication.ReloadPublication;
 import com.kltyton.autoseamblend.runtime.surface.MinecraftSurfaceCatalog;
+import com.kltyton.autoseamblend.runtime.surface.PreparedModelDecorationCandidates;
 import com.kltyton.autoseamblend.runtime.surface.PreparedSurfaceMethods;
-import com.kltyton.autoseamblend.selection.method.ConnectionMethod;
-import java.util.IdentityHashMap;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -144,30 +143,10 @@ public final class FabricAthenaModelLifecycle {
     private static CandidateStates computeCandidates(
             PreparedSurfaceMethods.Snapshot preparedMethods,
             long generation) {
-        IdentityHashMap<BlockState, Boolean> candidates =
-                new IdentityHashMap<>();
-        preparedMethods.methods()
-                .forEach((key, method) -> {
-                    if (method.decision()
-                            .resolvedMethod()
-                            .filter(resolved ->
-                                    resolved
-                                            != ConnectionMethod.NONE)
-                            .isPresent()) {
-                        candidates.put(
-                                key.state(),
-                                Boolean.TRUE);
-                    }
-                });
-        preparedMethods.autoMethods()
-                .forEach((block, auto) ->
-                        candidates.put(
-                                auto.state(),
-                                Boolean.TRUE));
         return new CandidateStates(
                 generation,
                 preparedMethods.reloadToken(),
-                candidates.keySet());
+                PreparedModelDecorationCandidates.states(preparedMethods));
     }
 
 }

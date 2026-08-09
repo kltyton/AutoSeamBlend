@@ -179,14 +179,16 @@ public final class ContinuityAutoBlendProcessor implements QuadProcessor {
                 || !QuadUtil.isQuadUnitSquare(quad)) {
             return ProcessingResult.NEXT_PROCESSOR;
         }
-        for (ContinuityOverlayOrchestrator.Candidate<FaceSurface> candidate : selectDonors(
-                level,
-                pos,
-                quad.direction(),
-                state,
-                ruleSnapshot.rules(),
-                surfaces,
-                generation)) {
+        List<ContinuityOverlayOrchestrator.Candidate<FaceSurface>> donors =
+                selectDonors(
+                        level,
+                        pos,
+                        quad.direction(),
+                        state,
+                        ruleSnapshot.rules(),
+                        surfaces,
+                        generation);
+        for (ContinuityOverlayOrchestrator.Candidate<FaceSurface> candidate : donors) {
             Donor selected = new Donor(
                     candidate.state(),
                     candidate.surface(),
@@ -238,7 +240,7 @@ public final class ContinuityAutoBlendProcessor implements QuadProcessor {
                                     selected,
                                     ruleSnapshot.rules(),
                                     surfaces));
-            List<Integer> nativeSlots = selector.select(
+            List<Integer> requestedSlots = selector.select(
                     quad,
                     sprite,
                     level,
@@ -246,10 +248,10 @@ public final class ContinuityAutoBlendProcessor implements QuadProcessor {
                     appearanceState,
                     state,
                     context);
-            nativeSlots =
+            List<Integer> nativeSlots =
                     NativeOwnershipTracker
                             .filterAutoBlendOverlaySlots(
-                                    nativeSlots);
+                                    requestedSlots);
             if (nativeSlots.isEmpty()) {
                 continue;
             }
@@ -260,11 +262,13 @@ public final class ContinuityAutoBlendProcessor implements QuadProcessor {
                     selected.surface().tintIndex());
             TextureAtlasSprite[] generated =
                     stateSprites.orElseThrow();
+            int emitted = 0;
             for (int slot : nativeSlots) {
                 if (slot < 0
                         || slot >= generated.length) {
                     continue;
                 }
+                emitted++;
                 QuadUtil.emitOverlayQuad(
                         context.getExtraQuadEmitter(),
                         quad.direction(),
@@ -285,7 +289,7 @@ public final class ContinuityAutoBlendProcessor implements QuadProcessor {
             BlockState state,
             ConnectionRuleSet<Block> rules,
             MinecraftSurfaceCatalog.Snapshot surfaces) {
-        return MinecraftTopSurfaceResolver
+        ProcessingResult result = MinecraftTopSurfaceResolver
                 .resolve(
                         level,
                         pos,
@@ -300,6 +304,7 @@ public final class ContinuityAutoBlendProcessor implements QuadProcessor {
                                 topSprite))
                 .orElse(
                         ProcessingResult.NEXT_PROCESSOR);
+        return result;
     }
 
     private static ProcessingResult replaceConnectedSurface(
@@ -325,12 +330,17 @@ public final class ContinuityAutoBlendProcessor implements QuadProcessor {
         if (generated.isEmpty()) {
             return ProcessingResult.NEXT_PROCESSOR;
         }
-        ConnectionPredicate predicate = (world, origin, originAppearance, originState,
-                otherPos, otherAppearance, otherState, face, quadSprite) ->
-                ContinuityMethodPolicy.connects(
-                        rules,
-                        state.getBlock(),
-                        otherState.getBlock());
+        ConnectionPredicate predicate =
+                (world, origin, originAppearance, originState,
+                        otherPos, otherAppearance, otherState,
+                        face, quadSprite) -> {
+                    boolean connects =
+                            ContinuityMethodPolicy.connects(
+                                    rules,
+                                    state.getBlock(),
+                                    otherState.getBlock());
+                    return connects;
+                };
         ReplacementProcessorKey key =
                 new ReplacementProcessorKey(
                         ruleGeneration,
@@ -348,7 +358,7 @@ public final class ContinuityAutoBlendProcessor implements QuadProcessor {
                                                 generated.orElseThrow(),
                                                 predicate,
                                                 ACCEPTED_QUERY));
-        return processor.processQuad(
+        ProcessingResult result = processor.processQuad(
                 quad,
                 sprite,
                 level,
@@ -358,6 +368,7 @@ public final class ContinuityAutoBlendProcessor implements QuadProcessor {
                 random,
                 0,
                 context);
+        return result;
     }
 
     private static void emitOverlayCtm(

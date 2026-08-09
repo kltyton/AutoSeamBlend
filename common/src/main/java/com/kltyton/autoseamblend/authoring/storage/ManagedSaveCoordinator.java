@@ -3,6 +3,7 @@ package com.kltyton.autoseamblend.authoring.storage;
 import com.kltyton.autoseamblend.authoring.model.ManagedAuthoringProject;
 import com.kltyton.autoseamblend.authoring.document.NativeDocumentOperations;
 import com.kltyton.autoseamblend.authoring.property.NativePropertyPatch;
+import com.kltyton.autoseamblend.foundation.Constants;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -237,14 +238,7 @@ public final class ManagedSaveCoordinator {
                                     result);
                             return;
                         }
-                        IOException cleanupFailure = null;
-                        try {
-                            finishCommit(operation);
-                        } catch (IOException cleanupException) {
-                            // 中文：提交已持久化，备份清理失败不回滚，也不把已成功保存改判为失败；失败经结果契约传播。
-                            // English: The commit is durable; a backup-cleanup failure neither rolls back nor flips the successful save to failure; the failure propagates through the result contract.
-                            cleanupFailure = cleanupException;
-                        }
+                        finishCommit(operation);
                         status.set(Status.idle());
                         ManagedSaveTransaction.CommitSummary summary = operation.summary();
                         result.complete(new SaveResult(
@@ -253,7 +247,7 @@ public final class ManagedSaveCoordinator {
                                 summary.workspaceCreated(),
                                 summary.changedPaths(),
                                 finalOrdering.selectionChanged(),
-                                cleanupFailure));
+                                null));
                     });
         } catch (IOException | RuntimeException exception) {
             rollback(operation, ordering, exception);
@@ -291,17 +285,15 @@ public final class ManagedSaveCoordinator {
         }
     }
 
-    /**
-     * 中文：成功重载后结束事务并丢弃回滚备份；提交已持久化，备份清理失败以 IOException 传播且不得回滚。
-     *
-     * English: Finalizes the transaction after a successful reload and discards
-     * rollback backups; the commit is already durable, so a backup-cleanup
-     * failure propagates as IOException and must not trigger rollback.
-     */
     private static void finishCommit(
-            ManagedSaveTransaction operation)
-            throws IOException {
-        operation.finish();
+            ManagedSaveTransaction operation) {
+        try {
+            operation.finish();
+        } catch (IOException cleanupFailure) {
+            Constants.LOG.warn(
+                    "Managed save committed but rollback backup cleanup failed",
+                    cleanupFailure);
+        }
     }
 
     private void fail(

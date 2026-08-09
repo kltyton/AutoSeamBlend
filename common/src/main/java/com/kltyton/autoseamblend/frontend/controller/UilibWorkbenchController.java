@@ -96,11 +96,13 @@ public final class UilibWorkbenchController<T extends WorkbenchDraftFields> {
         }
         long requestId = nextRequestId;
         nextRequestId = Math.addExact(nextRequestId, 1);
+        OptionalLong previewGeneration =
+                capturedPreviewGeneration(action);
         Request<T> request = new Request<>(
                 requestId,
                 publicationVersion,
                 view.document().revision(),
-                capturedPreviewGeneration(action),
+                previewGeneration,
                 pendingOperation,
                 action,
                 view);

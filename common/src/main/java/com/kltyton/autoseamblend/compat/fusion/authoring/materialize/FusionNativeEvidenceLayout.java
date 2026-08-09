@@ -93,10 +93,16 @@ public record FusionNativeEvidenceLayout(
                             handler.defaultTileY(),
                             columns),
                     handler.defaultTileX());
-            if (logicalCells.size() != FusionNativeSheetPlan.logicalSlots(method).size()
-                    || logicalCells.stream()
-                            .noneMatch(cells ->
-                                    cells.contains(defaultCell))) {
+            // 中文：Fusion 1.3.12 的 OVERLAY 布局把 default tile (1,1) 作为合法空物理格
+            // （cell 7）：它不属于任何逻辑槽，FusionPhysicalLayoutPlan 会将其从所有逻辑组
+            // 中丢弃，因此这里不得要求 defaultCell 必须包含在 logicalCells 中；只保留
+            // logical slot 数量、dimensions、physical mapping 与 defaultCell 边界校验。
+            // English: Fusion 1.3.12's OVERLAY layout treats the default tile (1,1) as a
+            // legal empty physical cell (cell 7): it belongs to no logical slot and
+            // FusionPhysicalLayoutPlan drops it from every logical group, so resolve must
+            // not require defaultCell to be contained in logicalCells; only the logical
+            // slot count, dimensions, physical mapping, and defaultCell bounds remain.
+            if (logicalCells.size() != FusionNativeSheetPlan.logicalSlots(method).size()) {
                 return Optional.empty();
             }
             return Optional.of(new FusionNativeEvidenceLayout(

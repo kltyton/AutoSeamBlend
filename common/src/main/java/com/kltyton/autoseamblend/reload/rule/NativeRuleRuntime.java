@@ -3,6 +3,7 @@ package com.kltyton.autoseamblend.reload.rule;
 import com.google.gson.JsonObject;
 import com.kltyton.autoseamblend.authoring.storage.ManagedPackIdentity;
 import com.kltyton.autoseamblend.engine.ownership.NativeSlot;
+import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.reload.rule.evidence.NativeSlotEvidenceResolver;
 import com.kltyton.autoseamblend.runtime.publication.ReloadPublication;
 import java.io.IOException;
@@ -60,6 +61,7 @@ public final class NativeRuleRuntime {
                 candidates,
                 candidate -> effectiveDocument(resources, candidate),
                 diagnostics);
+        logPrepared(next, "Prepared");
         return next;
     }
 
@@ -74,6 +76,20 @@ public final class NativeRuleRuntime {
                         .map(resource -> resource.sourcePackId()
                                 .equals(candidate.packId()))
                         .orElse(false);
+    }
+
+    private static void logPrepared(
+            NativeRuleSnapshot next,
+            String action) {
+        Constants.LOG.info(
+                "{} native-author extension generation {}: rules={}, diagnostics={}",
+                action,
+                next.generation(),
+                next.rules().size(),
+                next.diagnostics().size());
+        next.diagnostics().forEach(value -> Constants.LOG.warn(
+                "Native authoring extension: {}",
+                value));
     }
 
     private static void capture(

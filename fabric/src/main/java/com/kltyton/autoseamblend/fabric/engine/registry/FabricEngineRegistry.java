@@ -54,7 +54,7 @@ public final class FabricEngineRegistry {
                     "fusion",
                     EngineFamily.FUSION,
                     "fusion",
-                    "1.3.5",
+                    "1.3.12",
                     "Fusion Fabric public texture-type, model, and quad APIs",
                     "com/supermartijn642/fusion/api/texture/DefaultTextureTypes.class",
                     "com/supermartijn642/fusion/api/texture/custom/BlockStateQuadProcessor.class",

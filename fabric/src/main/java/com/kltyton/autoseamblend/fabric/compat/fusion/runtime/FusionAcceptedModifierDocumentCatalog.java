@@ -1,28 +1,24 @@
 package com.kltyton.autoseamblend.fabric.compat.fusion.runtime;
 
 import com.kltyton.autoseamblend.engine.query.NativeDocumentIdentity;
+import com.kltyton.autoseamblend.compat.fusion.runtime.FusionModifierDocumentLocation;
 import com.kltyton.autoseamblend.mixin.fusion.BlockModelModifierPropertiesAccessor;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
- * 中文：只暂存 Fusion 1.3.5 原生 parser 已接受的方块状态与顶层文档身份。
+ * 中文：只暂存 Fusion 1.3.12 原生 parser 已接受的方块状态与顶层文档身份。
  *
  * English: Stages only block-state/top-level-document identities accepted by
- * Fusion 1.3.5's native parser.
+ * Fusion 1.3.12's native parser.
  */
 public final class FusionAcceptedModifierDocumentCatalog {
-    private static final FileToIdConverter ID_CONVERTER =
-            FileToIdConverter.json(
-                    "fusion/model_modifiers/blocks");
-
     private FusionAcceptedModifierDocumentCatalog() {}
 
     public static synchronized void beginReload(
@@ -63,10 +59,15 @@ public final class FusionAcceptedModifierDocumentCatalog {
                                 ((BlockModelModifierPropertiesAccessor)
                                                 property)
                                         .autoseamblend$location();
+                        // 中文：stripped 模型 ID 必须归一化为完整文件 ID 才能命中 accepted 文档键。
+                        // English: The stripped model ID must be normalized to the full file ID to hit accepted-document keys.
+                        Identifier resourceId =
+                                FusionModifierDocumentLocation
+                                        .resourceId(location);
                         com.kltyton.autoseamblend.compat
                                 .fusion.runtime
                                 .FusionAcceptedModifierDocumentCatalog
-                                .reloadingDocument(location)
+                                .reloadingDocument(resourceId)
                                 .ifPresent(documents::add);
                     }
                     if (!documents.isEmpty()) {

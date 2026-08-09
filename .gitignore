@@ -22,10 +22,3 @@ build
 eclipse
 run
 runs
-
-# generated logs and runtime artifacts
-*.log
-*.pid
-*.out
-*.err
-meta/

@@ -349,8 +349,8 @@ public class TextureCanvasWidget
                         24,
                         scale
                                 + (vertical > 0.0D
-                                        ? 1
-                                        : -1)));
+                        ? 1
+                        : -1)));
         return true;
     }
 

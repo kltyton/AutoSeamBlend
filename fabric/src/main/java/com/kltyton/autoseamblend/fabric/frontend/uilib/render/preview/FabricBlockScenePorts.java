@@ -222,6 +222,13 @@ public final class FabricBlockScenePorts {
                 RandomSource.create(
                         worldPosition.asLong()),
                 face -> false);
+        if (quads.isEmpty()) {
+            com.kltyton.autoseamblend.foundation.Constants.LOG
+                    .warn(
+                            "Preview captured no quads for {} at {}",
+                            state,
+                            worldPosition);
+        }
         BlockStateModelPart part =
                 new CollectedPart(
                         quads,

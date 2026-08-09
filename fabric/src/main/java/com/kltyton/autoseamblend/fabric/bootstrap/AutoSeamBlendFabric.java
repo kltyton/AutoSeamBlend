@@ -8,6 +8,7 @@ import com.kltyton.autoseamblend.engine.routing.query.EngineQuerySelection;
 import com.kltyton.autoseamblend.fabric.engine.registry.FabricEngineRegistry;
 import com.kltyton.autoseamblend.fabric.reload.lifecycle.FabricEngineBootstrap;
 import com.kltyton.autoseamblend.fabric.reload.lifecycle.FabricModelLifecycle;
+import com.kltyton.autoseamblend.foundation.Constants;
 import com.kltyton.autoseamblend.runtime.overlay.OverlayDonorResolution;
 import com.kltyton.autoseamblend.runtime.publication.ReloadRulePublication;
 import com.kltyton.autoseamblend.runtime.selection.RuleRuntime;
@@ -47,5 +48,9 @@ public final class AutoSeamBlendFabric implements ClientModInitializer {
                 FabricEngineRegistry.RUNTIME::current);
         EngineQueryRouter.initialize(engines);
         FabricClientLifecycle.register(engines);
+        if (engines.engineRequired()) {
+            Constants.LOG.error(
+                    "ENGINE_REQUIRED: install Continuity, Fusion, or Athena for Fabric 26.1.2");
+        }
     }
 }

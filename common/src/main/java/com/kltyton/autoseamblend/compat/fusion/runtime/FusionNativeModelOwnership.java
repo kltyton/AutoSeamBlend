@@ -1,5 +1,6 @@
 package com.kltyton.autoseamblend.compat.fusion.runtime;
 
+import com.supermartijn642.fusion.model.CombinedBlockStateModel;
 import com.supermartijn642.fusion.model.modifiers.block.BlockModelModifierBakedModel;
 import com.supermartijn642.fusion.model.types.base.BaseBlockStateModel;
 import com.supermartijn642.fusion.model.types.composite.CompositeBlockStateModel;
@@ -18,8 +19,11 @@ public final class FusionNativeModelOwnership {
     private FusionNativeModelOwnership() {}
 
     public static boolean owns(BlockStateModel model) {
+        // 中文：1.3.12 的 combined 模型类型同样属于原生 Fusion 所有权。
+        // English: The 1.3.12 combined model type is also native Fusion ownership.
         return model instanceof BaseBlockStateModel
                 || model instanceof CompositeBlockStateModel
+                || model instanceof CombinedBlockStateModel
                 || model instanceof BlockModelModifierBakedModel;
     }
 }

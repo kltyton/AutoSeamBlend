@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /** 中文：不可变的有序选择器结果；配置文本只在重载期间解析。 / English: Immutable ordered selector result. Configuration text is parsed only during reload. */
-public final class ConnectionRuleSet<T> {
+public final class  ConnectionRuleSet<T> {
     private final Map<T, Set<String>> memberships;
     private final Map<T, CompiledSelector<T>> selected;
     private final List<CompiledSelector<T>> selectors;

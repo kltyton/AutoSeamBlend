@@ -23,8 +23,7 @@ dependencies {
     implementation("me.fzzyhmstrs:fzzy_config:${fzzy_config_fabric_version}")
 
     // UILib is bundled through Fabric Loom's native non-transitive Jar-in-Jar configuration.
-    implementation("com.daqem.uilib:uilib-fabric:${uilib_version}")
-    include("com.daqem.uilib:uilib-fabric:${uilib_version}")
+    include(implementation("com.daqem.uilib:uilib-fabric:${uilib_version}"))
 
     // This module uses Loom's no-remap plugin because all modules share Mojang
     // names. Normal compile/runtime configurations therefore provide the

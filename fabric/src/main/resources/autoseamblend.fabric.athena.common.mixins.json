@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kltyton.autoseamblend.mixin.athena",
+  "plugin": "com.kltyton.autoseamblend.fabric.compat.athena.bootstrap.AthenaMixinPlugin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

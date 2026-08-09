@@ -1,0 +1,120 @@
+plugins {
+    id 'multiloader-loader'
+    id 'net.fabricmc.fabric-loom-remap'
+}
+
+def validationEngine = providers.gradleProperty('autoseamblend_fabric_validation_engine').getOrElse('continuity')
+def validationEngineDependencies = [
+    continuity: "maven.modrinth:continuity:${continuity_fabric_version}",
+    fusion    : "maven.modrinth:fusion-connected-textures:${fusion_fabric_version}",
+    athena    : "maven.modrinth:athena-ctm:${athena_fabric_version}"
+]
+if (!validationEngineDependencies.containsKey(validationEngine)) {
+    throw new GradleException("Unknown AutoSeamBlend Fabric validation engine '${validationEngine}'. Expected one of: ${validationEngineDependencies.keySet().join(', ')}")
+}
+
+// Loom 1.17 only registers mod remap configurations for main by default;
+// the test source set needs them explicitly before the modTestImplementation dependency below.
+loom {
+    createRemapConfigurations(sourceSets.test)
+}
+
+dependencies {
+    minecraft("com.mojang:minecraft:${minecraft_version}")
+    mappings loom.layered {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${minecraft_version}:${parchment_version}@zip")
+    }
+    modImplementation("net.fabricmc:fabric-loader:${fabric_loader_version}")
+    modImplementation("net.fabricmc.fabric-api:fabric-api:${fabric_version}")
+
+    // Required player dependencies. These remain external mods and are never bundled.
+    implementation("net.fabricmc:fabric-language-kotlin:${fabric_language_kotlin_version}")
+    modImplementation("me.fzzyhmstrs:fzzy_config:${fzzy_config_fabric_version}")
+
+    // UILib and its required Architectury runtime are bundled through Fabric Loom's native Jar-in-Jar configuration.
+    // Both are mod jars published in the intermediary namespace, so Loom must remap them (modImplementation).
+    modImplementation("maven.modrinth:ui-lib:${uilib_version}-fabric,1.21.1")
+    include("maven.modrinth:ui-lib:${uilib_version}-fabric,1.21.1")
+    modImplementation("dev.architectury:architectury-fabric:${architectury_version}")
+    include("dev.architectury:architectury-fabric:${architectury_version}")
+
+    // Optional compatibility targets: compile surface only, never bundled or forced on players.
+    // MC 1.21.1 Fabric mods ship in the intermediary namespace, so Loom remaps them (modCompileOnly).
+    modCompileOnly("maven.modrinth:continuity:${continuity_fabric_version}")
+    modCompileOnly("maven.modrinth:fusion-connected-textures:${fusion_fabric_version}")
+    modCompileOnly("maven.modrinth:athena-ctm:${athena_fabric_version}")
+    modRuntimeOnly(validationEngineDependencies[validationEngine])
+
+    testImplementation platform('org.junit:junit-bom:5.10.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    // Exact 1.21.1 adapter target for real loader/holder characterization; test scope only, never bundled.
+    modTestImplementation("maven.modrinth:continuity:${continuity_fabric_version}")
+    // 中文：仅供 Fabric Athena 所有权合同测试解析 Athena 4.0.6 模型/WrappedGetter/
+    // FactoryManagerImpl/AthenaResourceLoader API；modTestImplementation 只进测试编译与
+    // 运行类路径，不进入生产 jar，也不改变默认开发 validation engine 的 modRuntimeOnly
+    // 注入（默认仍为 continuity）。与上方 Continuity 测试依赖同型。
+    // English: Test-only dependency for Fabric Athena ownership contract tests to resolve
+    // Athena 4.0.6 model/WrappedGetter/FactoryManagerImpl/AthenaResourceLoader APIs;
+    // modTestImplementation stays on the test compile and runtime classpath only, never
+    // bundled into the production jar, and never changes the default development
+    // validation-engine modRuntimeOnly injection (still continuity). Same shape as the
+    // Continuity test dependency above.
+    modTestImplementation("maven.modrinth:athena-ctm:${athena_fabric_version}")
+    // 中文：仅供 Fabric Fusion 装饰时机合同测试解析 Fusion 1.3.12 的
+    // WrappedBakedModel（FabricFusionConnectedBlockStateModel 的父类）与模型生命周期
+    // 类型；modTestImplementation 只进测试编译与运行类路径，不进入生产 jar，也不改变
+    // 默认开发 validation engine 的 modRuntimeOnly 注入。与上方 Athena 测试依赖同型。
+    // English: Test-only dependency for the Fabric Fusion decoration-timing contract tests
+    // to resolve Fusion 1.3.12 WrappedBakedModel (the superclass of
+    // FabricFusionConnectedBlockStateModel) and model-lifecycle types; modTestImplementation
+    // stays on the test compile and runtime classpath only, never bundled into the
+    // production jar, and never changes the default development validation-engine
+    // modRuntimeOnly injection. Same shape as the Athena test dependency above.
+    modTestImplementation("maven.modrinth:fusion-connected-textures:${fusion_fabric_version}")
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}
+
+loom {
+    def aw = project(':common').file("src/main/resources/${mod_id}.accesswidener")
+    if (aw.exists()) {
+        accessWidenerPath.set(aw)
+    }
+    runs {
+        client {
+            client()
+            setConfigName('Fabric Client')
+            ideConfigGenerated(true)
+            runDir('runs/client')
+        }
+        server {
+            server()
+            setConfigName('Fabric Server')
+            ideConfigGenerated(true)
+            runDir('runs/server')
+        }
+    }
+}
+
+// Implement mcgradleconventions loader attribute
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements', 'includeInternal', 'modCompileClasspath'].each { variant ->
+    configurations.named(variant) {
+        attributes {
+            attribute(loaderAttribute, 'fabric')
+        }
+    }
+}
+sourceSets.configureEach {
+    [it.compileClasspathConfigurationName, it.runtimeClasspathConfigurationName].each { variant->
+        configurations.named(variant) {
+            attributes {
+                attribute(loaderAttribute, 'fabric')
+            }
+        }
+    }
+}

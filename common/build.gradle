@@ -1,0 +1,183 @@
+plugins {
+    id 'multiloader-common'
+    id 'net.neoforged.moddev'
+}
+
+neoForge {
+    neoFormVersion = neo_form_version
+    parchment {
+        minecraftVersion = parchment_minecraft_version
+        mappingsVersion = parchment_version
+    }
+    // Automatically enable AccessTransformers if the file exists
+    def at = file('src/main/resources/META-INF/accesstransformer.cfg')
+    if (at.exists()) {
+        accessTransformers.from(at.absolutePath)
+    }
+}
+
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+
+// 备选方案（已注释保留，供人工学习）：NeoContinuity Jar-in-Jar 内嵌 Mojang 命名的 Fabric
+// renderer API；也可在构建时从 NeoContinuity jar 提取该类库作为编译类路径，从而完全
+// 不依赖 Forgified maven 坐标。当前采用下方显式 Forgified 编译依赖（更常规）。
+// Alternative (commented out for reference): extract the Mojang-named Fabric renderer API from
+// NeoContinuity's own Jar-in-Jar at build time, avoiding any Forgified maven coordinate.
+/*
+def neocontinuityCompileOnly = configurations.detachedConfiguration(
+        dependencies.create(
+                "curse.maven:neocontinuity-1377279:${neocontinuity_neoforge_file}"))
+
+tasks.register('extractNeoContinuityJij') {
+    def outputDir = layout.buildDirectory.dir('neocontinuity-jij')
+    def rendererTarget = outputDir.map { it.file('fabric-renderer-api-v1.jar') }
+    def baseTarget = outputDir.map { it.file('fabric-api-base.jar') }
+    outputs.files(rendererTarget, baseTarget)
+    doLast {
+        def jarFile = neocontinuityCompileOnly.files
+                .find { it.name.contains('neocontinuity') }
+        if (jarFile == null) {
+            throw new GradleException(
+                    'NeoContinuity compileOnly jar not found for JIJ extraction')
+        }
+        def dest = outputDir.get().asFile
+        delete(dest)
+        dest.mkdirs()
+        def rendererOut = rendererTarget.get().asFile
+        def baseOut = baseTarget.get().asFile
+        def zip = new java.util.zip.ZipFile(jarFile)
+        try {
+            zip.entries().each { entry ->
+                if (entry.name.startsWith('META-INF/jarjar/fabric-renderer-api-v1-')) {
+                    rendererOut.withOutputStream { out ->
+                        out.write(zip.getInputStream(entry).bytes)
+                    }
+                } else if (entry.name.startsWith('META-INF/jarjar/fabric-api-base-')) {
+                    baseOut.withOutputStream { out ->
+                        out.write(zip.getInputStream(entry).bytes)
+                    }
+                }
+            }
+        } finally {
+            zip.close()
+        }
+    }
+}
+*/
+
+dependencies {
+    // MC 1.21.1 is an obfuscated Minecraft; this module's Minecraft comes from NeoForge ModDevGradle
+    // (Mojang names), so common compiles engine/library bridges against the byte-identical Mojang-named
+    // NeoForge artifacts. Each Loader module still supplies its own native runtime artifact.
+    compileOnly("maven.modrinth:fusion-connected-textures:${fusion_neoforge_version}") {
+        attributes { attribute(loaderAttribute, 'neoforge') }
+    }
+    compileOnly("maven.modrinth:ui-lib:${uilib_version}-neoforge,1.21.1") {
+        attributes { attribute(loaderAttribute, 'neoforge') }
+    }
+    compileOnly("curse.maven:neocontinuity-1377279:${neocontinuity_neoforge_file}") {
+        attributes { attribute(loaderAttribute, 'neoforge') }
+    }
+    compileOnly("maven.modrinth:athena-ctm:${athena_neoforge_version}") {
+        attributes { attribute(loaderAttribute, 'neoforge') }
+    }
+    // Fabric and NeoForge both bundle Fabric Mixin, so it is safe to use it in common
+    // If you need to update, check what version they are using to see what is compatible
+    // https://github.com/neoforged/NeoForge/blob/21.1.x/gradle.properties#L42
+    // https://github.com/FabricMC/fabric-loader/blob/master/gradle.properties#L12
+    compileOnly('net.fabricmc:sponge-mixin:0.15.2+mixin.0.8.7')
+    // Fabric and NeoForge both bundle MixinExtras, so it is safe to use it in common
+    compileOnly(annotationProcessor('io.github.llamalad7:mixinextras-common:0.5.3'))
+    // Version-local Fzzy schema types are compiled here; each Loader supplies its exact runtime artifact.
+    compileOnly("me.fzzyhmstrs:fzzy_config:${fzzy_config_neoforge_version}") {
+        attributes { attribute(loaderAttribute, 'neoforge') }
+    }
+    // NeoContinuity exposes Fabric renderer API types in its public constructors; these are the
+    // same org.sinytra.forgified-fabric-api artifacts NeoContinuity bundles via Jar-in-Jar.
+    // Compile-only surface; never shipped and players never install Forgified separately.
+    compileOnly("org.sinytra.forgified-fabric-api:fabric-renderer-api-v1:${ffapi_renderer_api_version}") {
+        attributes { attribute(loaderAttribute, 'neoforge') }
+    }
+    compileOnly("org.sinytra.forgified-fabric-api:fabric-api-base:${ffapi_base_version}") {
+        attributes { attribute(loaderAttribute, 'neoforge') }
+    }
+
+    // Real-widget contract tests construct ScrollBody (UILib 9.0.0 ScrollPanel/Content/Bar);
+    // the same locked artifact as the compile-only surface, test scope only.
+    testImplementation("maven.modrinth:ui-lib:${uilib_version}-neoforge,1.21.1") {
+        attributes { attribute(loaderAttribute, 'neoforge') }
+    }
+
+    testImplementation platform('org.junit:junit-bom:5.10.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    // 中文：仅供 common 侧 Athena 合同测试解析 Athena 4.0.6 CtmState/AthenaQuad 类型；
+    // compileOnly 不进测试类路径，故补精确 testImplementation；仅测试范围，不进生产。
+    // English: Test-only Athena 4.0.6 CtmState/AthenaQuad types for common-side Athena
+    // contract tests; compileOnly never reaches the test classpath, so this precise
+    // testImplementation is added; test scope only, never bundled into production.
+    testImplementation("maven.modrinth:athena-ctm:${athena_neoforge_version}") {
+        attributes { attribute(loaderAttribute, 'neoforge') }
+    }
+    // 中文：仅供 common 侧 Fusion 所有权与载体规划合同测试解析 Fusion 1.3.12 的
+    // DefaultTextureTypes/SpriteHelper/TextureAtlasSpriteExtension 等类型；compileOnly 不进
+    // 测试类路径，故补精确 testImplementation；仅测试范围，不进生产。
+    // English: Test-only Fusion 1.3.12 DefaultTextureTypes/SpriteHelper/
+    // TextureAtlasSpriteExtension types for common-side Fusion ownership and carrier-planning
+    // contract tests; compileOnly never reaches the test classpath, so this precise
+    // testImplementation is added; test scope only, never bundled into production.
+    testImplementation("maven.modrinth:fusion-connected-textures:${fusion_neoforge_version}") {
+        attributes { attribute(loaderAttribute, 'neoforge') }
+    }
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+}
+
+// Real-widget contract tests also need the Mojang-named Minecraft runtime that ModDevGradle
+// puts on the main runtime classpath (UILib static init touches com.mojang.logging.LogUtils).
+configurations.named('testRuntimeClasspath') {
+    extendsFrom configurations.runtimeClasspath
+}
+
+// Real-workbench contract tests also compile against the Mojang-named Minecraft types that
+// ModDevGradle puts on the main compile classpath (frontend view-model/paint contracts).
+configurations.named('testCompileClasspath') {
+    extendsFrom configurations.runtimeClasspath
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}
+
+configurations {
+    commonJava {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+    commonResources {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+}
+
+artifacts {
+    commonJava sourceSets.main.java.sourceDirectories.singleFile
+    commonResources sourceSets.main.resources.sourceDirectories.singleFile
+}
+
+// Implement mcgradleconventions loader attribute
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->
+    configurations.named(variant) {
+        attributes {
+            attribute(loaderAttribute, 'common')
+        }
+    }
+}
+sourceSets.configureEach {
+    [it.compileClasspathConfigurationName, it.runtimeClasspathConfigurationName].each { variant->
+        configurations.named(variant) {
+            attributes {
+                attribute(loaderAttribute, 'common')
+            }
+        }
+    }
+}

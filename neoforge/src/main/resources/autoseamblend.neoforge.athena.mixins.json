@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kltyton.autoseamblend.neoforge.compat.athena.mixin",
+  "plugin": "com.kltyton.autoseamblend.neoforge.mixin.OptionalEngineMixinPlugin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "AthenaBakedModelAccessor",
+    "ConnectedBlockModelAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -5,8 +5,7 @@
   "plugin": "com.kltyton.autoseamblend.fabric.compat.athena.bootstrap.AthenaMixinPlugin",
   "compatibilityLevel": "JAVA_25",
   "client": [
-    "AthenaBakedModelAccessor",
-    "ConnectedBlockModelAccessor"
+    "AthenaBakedModelAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

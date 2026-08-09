@@ -530,6 +530,23 @@ public final class MinecraftSurfaceCatalog {
                     : surface.preferredFace(direction);
         }
 
+        /**
+         * 中文：overlay 供体专用面选择：优先 tinted 层（tintIndex>=0），再 opaque，再精灵名。
+         * 通用 preferredFace 保持 opaque-first 不变（工作台/导出/推断仍用旧语义）。
+         *
+         * English: Overlay-donor-specific face selection: prefers the tinted layer
+         * (tintIndex>=0), then opaque, then sprite name. The generic preferredFace stays
+         * opaque-first for the workbench/export/inference consumers.
+         */
+        public Optional<FaceSurface> overlayDonorFace(
+                BlockState state,
+                Direction direction) {
+            StateSurface surface = states.get(state);
+            return surface == null
+                    ? Optional.empty()
+                    : surface.overlayDonorFace(direction);
+        }
+
         private static Map<Block, BlockRepresentative>
                 representativesByBlock(
                         Map<BlockState, StateSurface>
@@ -629,6 +646,65 @@ public final class MinecraftSurfaceCatalog {
             List<FaceSurface> values = faces.getOrDefault(direction, List.of());
             return values.isEmpty() ? Optional.empty() : Optional.of(values.getFirst());
         }
+
+        /**
+         * 中文：overlay 供体专用选择：tinted 层优先于 opaque 基底；单层与无 tint 面与
+         * preferredFace 结果一致。
+         *
+         * English: Overlay-donor-specific selection: the tinted layer wins over the opaque
+         * base; single-layer and untinted faces match preferredFace.
+         */
+        public Optional<FaceSurface> overlayDonorFace(
+                Direction direction) {
+            List<FaceSurface> values =
+                    faces.getOrDefault(direction, List.of());
+            if (values.isEmpty()) {
+                return Optional.empty();
+            }
+            if (values.size() == 1) {
+                return Optional.of(values.getFirst());
+            }
+            ArrayList<FaceSurface> sorted =
+                    new ArrayList<>(values);
+            sorted.sort(OVERLAY_DONOR_ORDER);
+            return Optional.of(sorted.getFirst());
+        }
+
+        private static final Comparator<FaceSurface>
+                OVERLAY_DONOR_ORDER =
+                        (left, right) -> {
+                            // 中文：tinted overlay 层必须优先于 opaque 基底（草侧
+                            // grass_block_side_overlay 大部分像素透明，opaque-first 会选中
+                            // 无 tint 的 dirt 基底）。
+                            // English: The tinted overlay layer must outrank the opaque base
+                            // (grass_block_side_overlay is mostly transparent, so opaque-first
+                            // selected the untinted dirt base).
+                            int tint = Boolean.compare(
+                                    right.tintIndex() >= 0,
+                                    left.tintIndex() >= 0);
+                            if (tint != 0) {
+                                return tint;
+                            }
+                            int opaque = Boolean.compare(
+                                    right.facts()
+                                            .alphaOpaque()
+                                            .isTrue(),
+                                    left.facts()
+                                            .alphaOpaque()
+                                            .isTrue());
+                            if (opaque != 0) {
+                                return opaque;
+                            }
+                            return left.sprite()
+                                    .contents()
+                                    .name()
+                                    .toString()
+                                    .compareTo(
+                                            right.sprite()
+                                                    .contents()
+                                                    .name()
+                                                    .toString());
+                        };
     }
 
     public record FaceSurface(

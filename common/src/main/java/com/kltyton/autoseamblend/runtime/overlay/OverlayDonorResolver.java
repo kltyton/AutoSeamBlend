@@ -74,7 +74,8 @@ public final class OverlayDonorResolver {
                 face,
                 rules,
                 surfaces,
-                family)
+                family,
+                false)
                 .filter(value -> value.method().overlayCapable());
         ArrayList<BlockState> neighborStates = new ArrayList<>(8);
         for (PlanarOverlayNeighborhood.NeighborOffset offset
@@ -94,7 +95,8 @@ public final class OverlayDonorResolver {
                     face,
                     rules,
                     surfaces,
-                    family);
+                    family,
+                    true);
             if (resolved.isEmpty()) {
                 continue;
             }
@@ -186,14 +188,16 @@ public final class OverlayDonorResolver {
                 face,
                 rules,
                 surfaces,
-                family)
+                family,
+                false)
                 .filter(value -> value.method().overlayCapable());
         return candidate(
                 donor.state(),
                 face,
                 rules,
                 surfaces,
-                family)
+                family,
+                true)
                 .filter(value -> value.method().overlayCapable())
                 .filter(value -> OverlayCandidateArbitration.winsOver(
                         value,
@@ -207,7 +211,8 @@ public final class OverlayDonorResolver {
             Direction face,
             ConnectionRuleSet<Block> rules,
             MinecraftSurfaceCatalog.Snapshot surfaces,
-            EngineFamily family) {
+            EngineFamily family,
+            boolean overlayDonor) {
         return candidateCache(rules, surfaces)
                 .resolve(
                         state,
@@ -218,7 +223,8 @@ public final class OverlayDonorResolver {
                                 face,
                                 rules,
                                 surfaces,
-                                family));
+                                family,
+                                overlayDonor));
     }
 
     private Optional<Candidate> computeCandidate(
@@ -226,8 +232,16 @@ public final class OverlayDonorResolver {
             Direction face,
             ConnectionRuleSet<Block> rules,
             MinecraftSurfaceCatalog.Snapshot surfaces,
-            EngineFamily family) {
-        return surfaces.preferredFace(state, face)
+            EngineFamily family,
+            boolean overlayDonor) {
+        // 中文：供体面选择必须优先 tinted overlay 层（通用 tinted/alpha overlay 表面），
+        // 接收面保持旧 preferredFace 语义不变（工作台/导出/推断不受影响）。
+        // English: Donor faces must prefer the tinted overlay layer for any tinted/alpha
+        // overlay surface; receiver faces keep the legacy preferredFace semantics so the
+        // workbench/export/inference behavior is unchanged.
+        return (overlayDonor
+                        ? surfaces.overlayDonorFace(state, face)
+                        : surfaces.preferredFace(state, face))
                 .flatMap(surface ->
                         resolution(
                                 family,

@@ -11,7 +11,6 @@ public final class MixinPluginTargets {
                     false,
                     "earth.terrarium.athena.api.client.fabric.AthenaBakedModel",
                     "earth.terrarium.athena.impl.client.models.PaneConnectedBlockModel",
-                    "earth.terrarium.athena.impl.client.models.ConnectedBlockModel",
                     "earth.terrarium.athena.impl.client.models.ctm.ConnectedTextureMap",
                     "earth.terrarium.athena.impl.client.models.materials.MaterialStorage",
                     "earth.terrarium.athena.impl.loading.AthenaResourceLoader",

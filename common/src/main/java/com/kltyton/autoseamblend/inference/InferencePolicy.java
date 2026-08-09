@@ -52,6 +52,21 @@ public final class InferencePolicy {
         if (vertical && !horizontal) {
             return inferred(ConnectionMethod.VERTICAL, "vertical_axis_only");
         }
+        // 中文：tinted translucent 的完整方块表面是 overlay 层（如草侧 overlay 层：带透明
+        // 边框+基底下层），必须先于“透明边框→CTM”判定为 OVERLAY 供体，否则供体候选被排除、
+        // overlay 不进入发射分支。不依赖任何方块/精灵名。
+        // English: A tinted translucent full-block face is an overlay layer (e.g. a grass-side
+        // overlay layer: framed alpha over a base) and must infer OVERLAY before the
+        // transparent-frame CTM rule, otherwise the donor candidate is dropped and the overlay
+        // never enters emission. No block or sprite names are used.
+        if (facts.alphaOpaque().isFalse()
+                && facts.tintPresent().isTrue()
+                && facts.fullBlock().isTrue()
+                && facts.partialGeometry().isFalse()) {
+            return inferred(
+                    ConnectionMethod.OVERLAY,
+                    "tinted_translucent_overlay_layer");
+        }
         if (facts.alphaOpaque().isFalse()
                 && facts.framedAlpha().isTrue()) {
             return inferred(

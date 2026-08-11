@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kltyton.autoseamblend.fabric.compat.fusion.mixin",
+  "plugin": "com.kltyton.autoseamblend.fabric.compat.fusion.bootstrap.FusionMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

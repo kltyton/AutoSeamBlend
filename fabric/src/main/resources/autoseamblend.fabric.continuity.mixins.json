@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kltyton.autoseamblend.fabric.compat.continuity.mixin",
+  "plugin": "com.kltyton.autoseamblend.fabric.compat.continuity.bootstrap.ContinuityMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kltyton.autoseamblend.mixin.minecraft",
+  "refmap": "autoseamblend.forge.refmap.json",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "ModelManagerInvoker",
+    "SpriteContentsImageAccessor",
+    "SpriteSourceListAccessor",
+    "AtlasManagerInitialPreparationMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

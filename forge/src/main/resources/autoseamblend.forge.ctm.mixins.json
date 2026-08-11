@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kltyton.autoseamblend.forge.compat.ctm_mod.mixin",
+  "plugin": "com.kltyton.autoseamblend.forge.mixin.OptionalEngineMixinPlugin",
+  "refmap": "autoseamblend.forge.refmap.json",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "AbstractConnectedTextureBlockStateModelAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

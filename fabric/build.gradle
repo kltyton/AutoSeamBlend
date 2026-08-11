@@ -1,0 +1,128 @@
+plugins {
+    id 'multiloader-loader'
+    id 'net.fabricmc.fabric-loom-remap'
+}
+
+// 中文：UILib/Fusion/Continuity 的 1.20.1 发布件是 intermediary 映射；common 是 Mojang
+// 命名独立编译单元。这里直接消费 Loom 1.17.17 内建 mod-dependency remap 产物
+// （.gradle/loom-cache/remapped_mods，类名+成员名均正确映射）：先解析 modCompileClasspath
+// 触发 Loom 内置 remap transform，再把 named Jar 复制到 fabric/build/namedMods 供 common
+// compile/test 消费。产物是构建目录，不提交、不打包；common 侧无缓存路径依赖。
+// English: UILib/Fusion/Continuity 1.20.1 artifacts are intermediary-mapped; common is a
+// Mojang-named standalone unit. We consume Loom 1.17.17's built-in mod-dependency remap
+// outputs (.gradle/loom-cache/remapped_mods, class AND member names correctly mapped):
+// resolving modCompileClasspath triggers Loom's built-in remap transforms, then the named
+// jars are copied to fabric/build/namedMods for common's compile/test surface. Build output
+// only: not committed, not bundled; no cache-path dependency on common's side.
+def namedMods = tasks.register('prepareNamedMods', Sync) {
+    from(provider {
+        // Resolving modCompileClasspath triggers Loom's built-in remap transforms, which
+        // materialize the named jars in the project loom-cache before the file tree is read.
+        configurations.modCompileClasspath.files
+        fileTree(rootProject.layout.projectDirectory.dir(
+                '.gradle/loom-cache/remapped_mods/remapped/maven/modrinth')) {
+            include 'ui-lib-*/*/*.jar'
+            include 'fusion-connected-textures-*/*/*.jar'
+            include 'continuity-*/*/*.jar'
+            exclude '*sources*'
+        }
+    })
+    exclude '**/*sources*'
+    into(layout.buildDirectory.dir('namedMods'))
+}
+
+def validationEngine = providers.gradleProperty('autoseamblend_fabric_validation_engine').getOrElse('continuity')
+def validationEngineDependencies = [
+    continuity: "maven.modrinth:continuity:${continuity_fabric_version}",
+    fusion    : "maven.modrinth:fusion-connected-textures:${fusion_fabric_version}",
+    athena    : "maven.modrinth:athena-ctm:${athena_fabric_id}"
+]
+if (!validationEngineDependencies.containsKey(validationEngine)) {
+    throw new GradleException("Unknown AutoSeamBlend Fabric validation engine '${validationEngine}'. Expected one of: ${validationEngineDependencies.keySet().join(', ')}")
+}
+
+// Loom 1.17 only registers mod remap configurations for main by default;
+// the test source set needs them explicitly before the modTestImplementation dependencies.
+loom {
+    createRemapConfigurations(sourceSets.test)
+}
+
+dependencies {
+    minecraft("com.mojang:minecraft:${minecraft_version}")
+    mappings loom.layered {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${parchment_minecraft}:${parchment_version}@zip")
+    }
+    modImplementation("net.fabricmc:fabric-loader:${fabric_loader_version}")
+    modImplementation("net.fabricmc.fabric-api:fabric-api:${fabric_version}")
+
+    // Required player dependencies. These remain external mods and are never bundled.
+    implementation("net.fabricmc:fabric-language-kotlin:${fabric_language_kotlin_version}")
+    modImplementation("me.fzzyhmstrs:fzzy_config:${fzzy_config_fabric_version}")
+
+    // UILib 0.3.6 and its required Architectury runtime are bundled through Fabric Loom's
+    // native Jar-in-Jar configuration. Both are intermediary mod jars, so Loom remaps them.
+    modImplementation("maven.modrinth:ui-lib:${uilib_fabric_id}")
+    include("maven.modrinth:ui-lib:${uilib_fabric_id}")
+    modImplementation("dev.architectury:architectury-fabric:${architectury_version}")
+    include("dev.architectury:architectury-fabric:${architectury_version}")
+
+    // Optional compatibility targets: compile surface only, never bundled or forced on players.
+    modCompileOnly("maven.modrinth:continuity:${continuity_fabric_version}")
+    modCompileOnly("maven.modrinth:fusion-connected-textures:${fusion_fabric_version}")
+    modCompileOnly("maven.modrinth:athena-ctm:${athena_fabric_id}")
+    // Development validation intentionally loads exactly one optional engine.
+    modRuntimeOnly(validationEngineDependencies[validationEngine])
+
+    testImplementation platform('org.junit:junit-bom:5.10.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    // Test-scope engine surfaces for the Fabric contract tests (never bundled).
+    modTestImplementation("maven.modrinth:continuity:${continuity_fabric_version}")
+    modTestImplementation("maven.modrinth:athena-ctm:${athena_fabric_id}")
+    modTestImplementation("maven.modrinth:fusion-connected-textures:${fusion_fabric_version}")
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}
+
+loom {
+    def aw = project(':common').file("src/main/resources/${mod_id}.accesswidener")
+    if (aw.exists()) {
+        accessWidenerPath.set(aw)
+    }
+    runs {
+        client {
+            client()
+            setConfigName('Fabric Client')
+            ideConfigGenerated(true)
+            runDir('runs/client')
+        }
+        server {
+            server()
+            setConfigName('Fabric Server')
+            ideConfigGenerated(true)
+            runDir('runs/server')
+        }
+    }
+}
+
+// Implement mcgradleconventions loader attribute
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements', 'includeInternal', 'modCompileClasspath'].each { variant ->
+    configurations.named(variant) {
+        attributes {
+            attribute(loaderAttribute, 'fabric')
+        }
+    }
+}
+sourceSets.configureEach {
+    [it.compileClasspathConfigurationName, it.runtimeClasspathConfigurationName].each { variant ->
+        configurations.named(variant) {
+            attributes {
+                attribute(loaderAttribute, 'fabric')
+            }
+        }
+    }
+}

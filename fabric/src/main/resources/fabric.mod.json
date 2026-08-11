@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "${mod_id}",
+  "version": "${version}",
+  "name": "${mod_name}",
+  "description": "${description}",
+  "authors": [
+    "${mod_author}"
+  ],
+  "license": "${license}",
+  "icon": "assets/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.kltyton.autoseamblend.fabric.bootstrap.AutoSeamBlendFabric"
+    ]
+  },
+  "mixins": [
+    "autoseamblend.common.minecraft.mixins.json",
+    "autoseamblend.fabric.platform.mixins.json",
+    "autoseamblend.fabric.mixins.json",
+    "autoseamblend.fabric.continuity.common.mixins.json",
+    "autoseamblend.fabric.continuity.mixins.json",
+    "autoseamblend.fabric.athena.common.mixins.json",
+    "autoseamblend.fabric.athena.mixins.json",
+    "autoseamblend.fabric.fusion.common.mixins.json",
+    "autoseamblend.fabric.fusion.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": "*",
+    "fabric-api": "*",
+    "fabric-language-kotlin": "*",
+    "fzzy_config": ">=0.7.6",
+    "minecraft": "~${minecraft_version}",
+    "java": ">=${java_version}"
+  },
+  "suggests": {
+    "continuity": "*",
+    "fusion": "1.3.12",
+    "athena": "*"
+  }
+}

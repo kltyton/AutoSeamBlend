@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kltyton.autoseamblend.mixin.continuity",
+  "plugin": "com.kltyton.autoseamblend.forge.mixin.OptionalEngineMixinPlugin",
+  "refmap": "autoseamblend.forge.refmap.json",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "AbstractQuadProcessorAccessor",
+    "BaseCtmPropertiesExtensionMixin",
+    "ContinuityLoadingContainerMixin",
+    "CtmPropertiesLoaderExtensionMixin",
+    "ContinuityProcessorListMixin",
+    "SimpleQuadProcessorAccessor",
+    "StandardOverlayProcessorAccessor",
+    "OverlayEmitterAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

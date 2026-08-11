@@ -1,0 +1,146 @@
+plugins {
+    id 'multiloader-common'
+    id 'net.neoforged.moddev.legacyforge'
+}
+
+// 中文：common 的 UILib/Fusion/Continuity 编译/测试面统一使用 fabric 模块
+// Loom 内建 remap 产物 fabric/build/namedMods（类名+成员名完整映射）。
+// English: common's UILib/Fusion/Continuity compile/test surface is fabric's Loom
+// built-in remap outputs fabric/build/namedMods (class + member names fully mapped).
+def fabricNamedMods = project(':fabric')
+        .layout
+        .buildDirectory
+        .dir('namedMods')
+
+// 中文：FFAPI 聚合器把各模块以嵌套 Jar 形式发布；构建时解出 renderer-api-v1 等
+// 模块供 common 编译 BlendMode 等 Fabric renderer 类型。产物为构建目录，不提交。
+// English: FFAPI ships its modules as nested jars; extract them at build time so common
+// can compile the Fabric renderer types (BlendMode). Build output, not committed.
+configurations {
+    ffapiAggregator {
+        canBeResolved = true
+        canBeConsumed = false
+    }
+}
+
+dependencies {
+    ffapiAggregator('maven.modrinth:forgified-fabric-api:XweDEycJ')
+}
+
+def ffapiModules = tasks.register('extractFfapiModules', Copy) {
+    from({ zipTree(configurations.ffapiAggregator.singleFile) }) {
+        include 'META-INF/jarjar/*.jar'
+    }
+    into(layout.buildDirectory.dir('ffapiModules'))
+    eachFile {
+        if (it.path.startsWith('META-INF/jarjar/')) {
+            it.relativePath = new RelativePath(true, it.name)
+        }
+    }
+    includeEmptyDirs = false
+}
+
+tasks.named('compileJava') {
+    dependsOn(ffapiModules)
+}
+
+legacyForge {
+    mcpVersion = minecraft_version
+    // Automatically enable AccessTransformers if the file exists
+    def at = file('src/main/resources/META-INF/accesstransformer.cfg')
+    if (at.exists()) {
+        accessTransformers.from(at.absolutePath)
+    }
+    parchment {
+        minecraftVersion = parchment_minecraft
+        mappingsVersion = parchment_version
+    }
+}
+
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+
+dependencies {
+    // UILib/Fusion/Continuity 1.20.1 发布件为 intermediary/Forge 映射；统一使用
+    // fabric 模块 Loom 内建 remap 的 named 产物（类名+成员名完整映射）。
+    compileOnly(fileTree(fabricNamedMods) {
+        exclude '**/*sources*'
+    })
+    compileOnly("maven.modrinth:athena-ctm:${athena_forge_id}") {
+        attributes { attribute(loaderAttribute, 'forge') }
+    }
+    // Version-local Fzzy schema types are compiled here; each Loader supplies its exact runtime artifact.
+    compileOnly("me.fzzyhmstrs:fzzy_config:${fzzy_config_forge_version}") {
+        attributes { attribute(loaderAttribute, 'forge') }
+    }
+    // Continuity exposes Fabric renderer API types (BlendMode) in its public constructors;
+    // compile surface comes from the extracted FFAPI modules above. Compile-only, never bundled.
+    compileOnly(fileTree(ffapiModules.map { it.destinationDir }))
+    // Fabric and Forge both bundle Fabric Mixin, so it is safe to use it in common.
+    compileOnly('net.fabricmc:sponge-mixin:0.15.2+mixin.0.8.7')
+    // sponge-mixin transitively pins ancient gson 2.2.4; Minecraft 1.20.1 ships gson 2.10
+    // (JsonObject.deepCopy / JsonParser.parseString are required by the authoring codecs).
+    implementation('com.google.code.gson:gson:2.10.1')
+
+    testImplementation platform('org.junit:junit-bom:5.10.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    // Test-only engine/UILib surfaces for the common contract tests (never bundled).
+    testImplementation(fileTree(fabricNamedMods) {
+        exclude '**/*sources*'
+    })
+    testImplementation("maven.modrinth:athena-ctm:${athena_forge_id}")
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('compileJava') {
+    dependsOn(project(':fabric').tasks.named('prepareNamedMods'))
+}
+
+
+// 中文：测试运行同样需要 Minecraft 运行时（Bootstrap.bootStrap 等）。
+// English: Test execution likewise needs the Minecraft runtime (Bootstrap.bootStrap etc.).
+configurations.named('testRuntimeClasspath') {
+    extendsFrom configurations.runtimeClasspath
+}
+// 中文：测试编译同样需要 Mojang 命名的 Minecraft/engine 类型。
+// English: The test compile classpath likewise needs the Mojang-named Minecraft/engine types.
+configurations.named('testCompileClasspath') {
+    extendsFrom configurations.runtimeClasspath
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}
+
+configurations {
+    commonJava {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+    commonResources {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+}
+
+artifacts {
+    commonJava sourceSets.main.java.sourceDirectories.singleFile
+    commonResources sourceSets.main.resources.sourceDirectories.singleFile
+}
+
+// Implement mcgradleconventions loader attribute
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->
+    configurations.named(variant) {
+        attributes {
+            attribute(loaderAttribute, 'common')
+        }
+    }
+}
+sourceSets.configureEach {
+    [it.compileClasspathConfigurationName, it.runtimeClasspathConfigurationName].each { variant ->
+        configurations.named(variant) {
+            attributes {
+                attribute(loaderAttribute, 'common')
+            }
+        }
+    }
+}

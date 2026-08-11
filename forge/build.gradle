@@ -1,0 +1,277 @@
+import net.neoforged.moddevgradle.legacyforge.internal.MinecraftMappings
+
+plugins {
+    id 'multiloader-loader'
+    id 'net.neoforged.moddev.legacyforge'
+}
+
+repositories {
+    // Constancy publishes its native 1.20.1 Forge build as a GitHub release asset.
+    // Artifact-only Ivy metadata keeps the dependency reproducible without checking a
+    // third-party binary into the repository.
+    ivy {
+        name = 'ConstancyGitHubReleases'
+        url = uri('https://github.com/ThinkingStudios/Constancy/releases/download')
+        patternLayout {
+            artifact('[revision]/[artifact]-[revision].[ext]')
+        }
+        metadataSources {
+            artifact()
+        }
+        content {
+            includeModule('io.github.thinkingstudios', 'constancy')
+        }
+    }
+}
+
+// 中文：Forge 1.20.1 的 Continuity/Fusion/UILib 发布件为 intermediary/m_XXX 映射，无法在
+// Mojmap 编译单元直接链接；统一消费 fabric 模块 Loom 内建 remap 的 named 产物。
+// English: Continuity/Fusion/UILib 1.20.1 Forge artifacts are intermediary/obfuscated-mapped
+// and cannot link in the Mojmap unit; consume the fabric module's Loom built-in named outputs.
+def forgeNamedMods = project(':fabric')
+        .layout
+        .buildDirectory
+        .dir('namedMods')
+
+// 中文：Continuity/Fusion 公共处理器引用 Fabric renderer API 类型（BlendMode/Mesh 等）；
+// 从 FFAPI 聚合器解出嵌套模块供 forge 编译。编译期 only，不打包。
+// English: Continuity/Fusion common processors reference Fabric renderer API types; extract
+// the nested FFAPI modules for forge compile. Compile-only, never bundled.
+configurations {
+    ffapiAggregator {
+        canBeResolved = true
+        canBeConsumed = false
+    }
+    constancyUpstream {
+        canBeResolved = true
+        canBeConsumed = false
+    }
+    constancyValidationNamed {
+        canBeResolved = true
+        canBeConsumed = false
+        attributes {
+            attribute(
+                    MinecraftMappings.ATTRIBUTE,
+                    objects.named(MinecraftMappings, MinecraftMappings.NAMED))
+        }
+    }
+}
+
+dependencies {
+    ffapiAggregator("maven.modrinth:forgified-fabric-api:${forgified_fabric_api_forge_id}")
+    constancyUpstream("io.github.thinkingstudios:constancy:${constancy_forge_version}@jar")
+}
+
+def ffapiModules = tasks.register('extractFfapiModules', Copy) {
+    from({ zipTree(configurations.ffapiAggregator.singleFile) }) {
+        include 'META-INF/jarjar/*.jar'
+    }
+    into(layout.buildDirectory.dir('ffapiModules'))
+    eachFile {
+        if (it.path.startsWith('META-INF/jarjar/')) {
+            it.relativePath = new RelativePath(true, it.name)
+        }
+    }
+    includeEmptyDirs = false
+}
+
+tasks.named('compileJava') {
+    dependsOn(ffapiModules)
+}
+
+def validationEngine = providers.gradleProperty('autoseamblend_validation_engine').getOrElse('continuity')
+def validationEngineDependencies = [
+    continuity: "maven.modrinth:continuity:${continuity_forge_id}",
+    constancy : "io.github.thinkingstudios:constancy:${constancy_forge_version}@jar",
+    ctm       : "curse.maven:ctm-267602:${ctm_forge_file}",
+    fusion    : "maven.modrinth:fusion-connected-textures:${fusion_forge_version}",
+    athena    : "maven.modrinth:athena-ctm:${athena_forge_id}"
+]
+if (!validationEngineDependencies.containsKey(validationEngine)) {
+    throw new GradleException("Unknown AutoSeamBlend validation engine '${validationEngine}'. Expected one of: ${validationEngineDependencies.keySet().join(', ')}")
+}
+// Constancy's production jar targets Forge's official names correctly, but its published
+// continuity.mixins.json omits the refmap needed by ModDev's Mojmap development runtime.
+// Patch only the validation dependency; these compatibility resources are not shipped in
+// AutoSeamBlend itself and do not alter Constancy's mixin list or production behavior.
+def patchedConstancyRuntimeJar = tasks.register('patchConstancyRuntimeJar', Zip) {
+    archiveFileName = "constancy-${constancy_forge_version}-autoseamblend-dev.jar"
+    destinationDirectory = layout.buildDirectory.dir('validationMods')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+
+    from({ zipTree(configurations.constancyUpstream.singleFile) }) {
+        exclude 'continuity.mixins.json'
+        exclude 'META-INF/*.SF', 'META-INF/*.RSA', 'META-INF/*.DSA'
+    }
+    from('src/validation/resources') {
+        include 'continuity.mixins.json'
+        include 'autoseamblend.constancy.refmap.json'
+    }
+}
+dependencies.add(
+        'constancyValidationNamed',
+        dependencies.create(files(patchedConstancyRuntimeJar.flatMap { it.archiveFile })))
+def transformedForgeTestEngineArtifacts = providers.provider {
+    configurations.compileClasspath.files.findAll { artifact ->
+        artifact.name.startsWith('ctm-267602-')
+                || artifact.name.startsWith('athena-ctm-')
+    }
+}
+
+def forgeMixinConfigs = [
+        'autoseamblend.forge.mixins.json',
+        'autoseamblend.forge.continuity.common.mixins.json',
+        'autoseamblend.forge.ctm.mixins.json',
+        'autoseamblend.forge.fusion.common.mixins.json',
+        'autoseamblend.forge.athena.common.mixins.json',
+        'autoseamblend.forge.athena.mixins.json'
+]
+
+// Connector replaces Forge's normal development Mixin discovery and ignores the
+// command-line configs for an exploded MOD_CLASSES directory. Run the validation client
+// from the packaged mod jar so its production MixinConfigs manifest is authoritative.
+def packagedValidationSourceSet = sourceSets.create('packagedValidation')
+configurations.named(packagedValidationSourceSet.runtimeClasspathConfigurationName) {
+    extendsFrom(configurations.runtimeClasspath)
+}
+dependencies.add(
+        packagedValidationSourceSet.runtimeOnlyConfigurationName,
+        files(tasks.named('jar').flatMap { it.archiveFile }))
+
+legacyForge {
+    version = "${minecraft_version}-${forge_version}"
+    accessTransformers = [project(':common').file(
+            'src/main/resources/META-INF/accesstransformer.cfg')]
+    parchment {
+        minecraftVersion = parchment_minecraft
+        mappingsVersion = parchment_version
+    }
+    runs {
+        client {
+            client()
+            sourceSet = packagedValidationSourceSet
+            loadedMods.set([])
+            taskBefore(tasks.named('jar'))
+            gameDirectory = this.mkdir(this.file('runs/client'))
+        }
+        server {
+            server()
+            this.file('runs/server').createParentDirectories()
+            gameDirectory = this.mkdir(this.file('runs/server'))
+        }
+    }
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+// ModDevGradle launches local mods from exploded source-set outputs, so the jar manifest
+// is not consulted by runClient. Register every config here for development, while the
+// manifest below remains the production discovery path.
+mixin {
+    add sourceSets.main, 'autoseamblend.forge.refmap.json'
+    forgeMixinConfigs.each { config it }
+}
+
+dependencies {
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+
+    // External player dependencies; normal implementation/runtimeOnly never bundles them.
+    modImplementation("me.fzzyhmstrs:fzzy_config:${fzzy_config_forge_version}") {
+        // The exact external KotlinForForge runtime is declared below from CurseMaven.
+        exclude group: 'thedarkcolour', module: 'kotlinforforge-neoforge'
+    }
+    runtimeOnly("curse.maven:kotlin-for-forge-351264:${kotlin_for_forge_file}")
+
+    // UILib 0.3.6 Forge and its required Architectury runtime are external required mods on
+    // 1.20.1 Forge. Keep both on the transformed development runtime; never bundle them.
+    modRuntimeOnly("maven.modrinth:ui-lib:${uilib_forge_id}")
+    modImplementation("dev.architectury:architectury-forge:${architectury_version}")
+
+    // Optional compatibility targets: compile surface only, never bundled or forced on players.
+    compileOnly(fileTree(forgeNamedMods) {
+        exclude '**/*sources*'
+    })
+    compileOnly(fileTree(ffapiModules.map { it.destinationDir }))
+    // CTM/Fusion/Athena Forge 1.20.1 release jars are official-mapped (m_XXXX_
+    // members in bytecode/refmaps).
+    // LegacyForge's modCompileOnly configuration registers the official->named artifact
+    // transform needed by the Mojmap compile unit. They remain optional and must not leak
+    // onto runClient's runtime classpath unless selected below.
+    modCompileOnly("curse.maven:ctm-267602:${ctm_forge_file}")
+    modCompileOnly("maven.modrinth:athena-ctm:${athena_forge_id}")
+    // Development validation intentionally loads exactly one optional engine.
+    if (validationEngine == 'constancy') {
+        runtimeOnly(files(configurations.constancyValidationNamed))
+    } else {
+        if (validationEngine == 'ctm' || validationEngine == 'fusion' || validationEngine == 'athena') {
+            // CTM, Fusion, and Athena publish official-obfuscated Forge jars. ModDev must
+            // transform the selected runtime artifact to this Mojmap userdev.
+            modRuntimeOnly(validationEngineDependencies[validationEngine])
+        } else {
+            runtimeOnly(validationEngineDependencies[validationEngine])
+        }
+        if (validationEngine == 'continuity') {
+            modRuntimeOnly("maven.modrinth:connector:${connector_forge_id}")
+            modRuntimeOnly("maven.modrinth:forgified-fabric-api:${forgified_fabric_api_forge_id}")
+        }
+    }
+
+    testImplementation platform('org.junit:junit-bom:5.10.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testCompileOnly(fileTree(forgeNamedMods) {
+        exclude '**/*sources*'
+    })
+    // Tests exercise every optional adapter, but the game validation runtime must contain
+    // only validationEngine. Reuse the already remapped main compile artifacts for tests
+    // instead of promoting CTM/Athena to runClient runtime dependencies.
+    testCompileOnly(files(transformedForgeTestEngineArtifacts))
+    testRuntimeOnly(fileTree(forgeNamedMods) {
+        exclude '**/*sources*'
+    })
+    testRuntimeOnly(files(transformedForgeTestEngineArtifacts))
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}
+
+// The test source set needs the Mojang-named Minecraft/engine runtime that ModDevGradle
+// puts on the main source set (Bootstrap.bootStrap, UILib static init, engine model types).
+configurations.named('testRuntimeClasspath') {
+    extendsFrom configurations.runtimeClasspath
+}
+configurations.named('testCompileClasspath') {
+    extendsFrom configurations.runtimeClasspath
+}
+
+// Forge 1.20.1 discovers Mixin configurations through the jar manifest's MixinConfigs
+// attribute; all declared mixin JSONs must exist in the jar.
+jar {
+    manifest {
+        attributes 'MixinConfigs': forgeMixinConfigs.join(',')
+    }
+}
+
+// Implement mcgradleconventions loader attribute
+def loaderAttribute = Attribute.of('io.github.mcgradleconventions.loader', String)
+['apiElements', 'runtimeElements', 'sourcesElements', 'javadocElements'].each { variant ->
+    configurations.named(variant) {
+        attributes {
+            attribute(loaderAttribute, 'forge')
+        }
+    }
+}
+sourceSets.configureEach {
+    [it.compileClasspathConfigurationName, it.runtimeClasspathConfigurationName].each { variant ->
+        configurations.named(variant) {
+            attributes {
+                attribute(loaderAttribute, 'forge')
+            }
+        }
+    }
+}

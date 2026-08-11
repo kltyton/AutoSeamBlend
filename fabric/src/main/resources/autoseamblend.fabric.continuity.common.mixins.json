@@ -1,0 +1,20 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.kltyton.autoseamblend.mixin.continuity",
+  "plugin": "com.kltyton.autoseamblend.fabric.compat.continuity.bootstrap.ContinuityMixinPlugin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "AbstractQuadProcessorAccessor",
+    "BaseCtmPropertiesExtensionMixin",
+    "ContinuityLoadingContainerMixin",
+    "CtmPropertiesLoaderExtensionMixin",
+    "ContinuityProcessorListMixin",
+    "SimpleQuadProcessorAccessor",
+    "StandardOverlayProcessorAccessor",
+    "OverlayEmitterAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

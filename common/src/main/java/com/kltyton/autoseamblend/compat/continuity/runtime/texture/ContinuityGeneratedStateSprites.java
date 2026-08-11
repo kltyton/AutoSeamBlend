@@ -7,6 +7,7 @@ import com.kltyton.autoseamblend.engine.routing.EngineQueryRouter;
 import com.kltyton.autoseamblend.reload.surface.InitialSurfacePreparation;
 import com.kltyton.autoseamblend.reload.surface.InitialSurfacePreparation.Surface;
 import com.kltyton.autoseamblend.texture.profile.InitialTextureProfileFactory;
+import com.kltyton.autoseamblend.texture.profile.InitialTextureProfiles;
 import com.kltyton.autoseamblend.runtime.publication.ReloadPublication;
 import com.kltyton.autoseamblend.runtime.selection.RuleRuntime;
 import com.kltyton.autoseamblend.texture.generation.GeneratedSpritePlanning;
@@ -18,6 +19,7 @@ import com.kltyton.autoseamblend.selection.method.ConnectionMethod;
 import com.kltyton.autoseamblend.texture.generation.ContinuityGeneratedSpritePlan;
 import com.kltyton.autoseamblend.texture.mask.OverlayCutoutProfile;
 import com.kltyton.autoseamblend.runtime.surface.SurfaceSourceSnapshot;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
@@ -101,6 +103,8 @@ public final class ContinuityGeneratedStateSprites {
         Objects.requireNonNull(ruleSnapshot, "ruleSnapshot");
         Objects.requireNonNull(planningView, "planningView");
         LinkedHashMap<String, InitialPlanEntry> entries = new LinkedHashMap<>();
+        IdentityHashMap<SurfaceSourceSnapshot, InitialTextureProfiles>
+                profiles = new IdentityHashMap<>();
         for (Surface surface : prepared.surfaces()) {
             Optional<EngineQuerySelection>
                     selection =
@@ -122,11 +126,6 @@ public final class ContinuityGeneratedStateSprites {
                                     Identifier.parse(surface.source().spriteId()));
             SurfaceSourceSnapshot source = surface.source();
             Identifier sourceId = Identifier.parse(source.spriteId());
-            OverlayCutoutProfile overlayProfile =
-                    InitialTextureProfileFactory.from(source)
-                            .overlay(surface.inferenceFacts()
-                                    .tintPresent()
-                                    .isTrue());
             if (!ContinuityGeneratedSpritePlan.requiresInitialPlan(
                     sourceId,
                     method,
@@ -134,6 +133,13 @@ public final class ContinuityGeneratedStateSprites {
                     source.frameHeight())) {
                 continue;
             }
+            OverlayCutoutProfile overlayProfile =
+                    profiles.computeIfAbsent(
+                                    source,
+                                    InitialTextureProfileFactory::from)
+                            .overlay(surface.inferenceFacts()
+                                    .tintPresent()
+                                    .isTrue());
             String key = ContinuityGeneratedSpritePlan.key(
                     sourceId,
                     method,

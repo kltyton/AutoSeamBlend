@@ -8,7 +8,7 @@ import java.util.Objects;
 
 /** 中文：基于可观察事实的纯有序策略；名称和资源路径被刻意排除。 / English: Pure, ordered policy over observable facts. Names and resource paths are deliberately absent. */
 public final class InferencePolicy {
-    public static final int ALGORITHM_VERSION = 9;
+    public static final int ALGORITHM_VERSION = 10;
 
     private InferencePolicy() {}
 
@@ -44,6 +44,10 @@ public final class InferencePolicy {
         if (facts.topOnly().isTrue()) {
             return inferred(ConnectionMethod.TOP, "top_only_face_domain");
         }
+        if (facts.fullBlock().isFalse()
+                || facts.partialGeometry().isTrue()) {
+            return inferred(ConnectionMethod.NONE, "partial_block_not_auto_eligible");
+        }
         boolean horizontal = facts.allowedAxes().contains(ConnectionAxis.HORIZONTAL);
         boolean vertical = facts.allowedAxes().contains(ConnectionAxis.VERTICAL);
         if (horizontal && !vertical) {
@@ -73,12 +77,6 @@ public final class InferencePolicy {
                     ConnectionMethod.CTM,
                     "transparent_perimeter_frame_native_ctm");
         }
-        if (facts.alphaOpaque().isFalse()
-                && facts.partialGeometry().isTrue()) {
-            return inferred(
-                    ConnectionMethod.NONE,
-                    "transparent_unframed_partial_geometry_passthrough");
-        }
         if (facts.animated().isTrue()
                 || facts.alphaOpaque().isFalse()
                 || facts.tintPresent().isTrue()) {
@@ -93,9 +91,6 @@ public final class InferencePolicy {
             return inferred(
                     ConnectionMethod.OVERLAY,
                     "uniform_full_block_native_overlay");
-        }
-        if (horizontal && vertical && facts.partialGeometry().isTrue()) {
-            return inferred(ConnectionMethod.HORIZONTAL_VERTICAL, "partial_geometry_both_axes");
         }
         return inferred(
                 ConnectionMethod.OVERLAY,

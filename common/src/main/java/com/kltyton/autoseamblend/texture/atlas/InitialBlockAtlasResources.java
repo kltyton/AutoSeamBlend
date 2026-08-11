@@ -4,7 +4,6 @@ import com.kltyton.autoseamblend.mixin.minecraft.SpriteContentsImageAccessor;
 import com.kltyton.autoseamblend.mixin.minecraft.SpriteSourceListAccessor;
 import com.kltyton.autoseamblend.runtime.surface.SurfaceSourceProvenance;
 import com.kltyton.autoseamblend.runtime.surface.SurfaceSourceSnapshot;
-import com.kltyton.autoseamblend.texture.analysis.TexturePixelAnalysis;
 import com.kltyton.autoseamblend.texture.budget.TextureImageBudget;
 import com.kltyton.autoseamblend.texture.budget.TextureInputBudget;
 import com.kltyton.autoseamblend.texture.budget.TextureSourceBudget;
@@ -29,6 +28,7 @@ import net.minecraft.data.AtlasIds;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.util.ARGB;
 
 /**
  * 中文：在首次方块 Atlas 缝合前捕获最终直接/派生来源；Loader 只提供生成来源判定。
@@ -379,10 +379,12 @@ public final class InitialBlockAtlasResources {
                                 exception);
                     }
                     budget.reserve(spriteId.toString(), pixelCount);
-                    int[] pixels = pixels(
-                            image,
+                    PixelAnalysis analysis = analyze(
+                            image.getPixelsABGR(),
                             sheetWidth,
                             sheetHeight,
+                            frame.width(),
+                            frame.height(),
                             pixelCount);
                     return SourceRead.available(
                             new SurfaceSourceSnapshot(
@@ -391,15 +393,10 @@ public final class InitialBlockAtlasResources {
                                     sheetHeight,
                                     frame.width(),
                                     frame.height(),
-                                    pixels,
+                                    analysis.straightArgb(),
                                     animation.isPresent(),
-                                    TexturePixelAnalysis.isOpaque(pixels),
-                                    TexturePixelAnalysis.hasFramedAlpha(
-                                            sheetWidth,
-                                            sheetHeight,
-                                            frame.width(),
-                                            frame.height(),
-                                            pixels),
+                                    analysis.opaque(),
+                                    analysis.framedAlpha(),
                                     SurfaceSourceProvenance.DIRECT_RESOURCE),
                             ReadEvidence.DIRECT_PNG);
                 }
@@ -454,10 +451,12 @@ public final class InitialBlockAtlasResources {
                         frameWidth,
                         frameHeight);
                 budget.reserve(spriteId.toString(), pixelCount);
-                int[] pixels = pixels(
-                        image,
+                PixelAnalysis analysis = analyze(
+                        image.getPixelsABGR(),
                         sheetWidth,
                         sheetHeight,
+                        frameWidth,
+                        frameHeight,
                         pixelCount);
                 return SourceRead.available(
                         new SurfaceSourceSnapshot(
@@ -466,15 +465,10 @@ public final class InitialBlockAtlasResources {
                                 sheetHeight,
                                 frameWidth,
                                 frameHeight,
-                                pixels,
+                                analysis.straightArgb(),
                                 contents.isAnimated(),
-                                TexturePixelAnalysis.isOpaque(pixels),
-                                TexturePixelAnalysis.hasFramedAlpha(
-                                        sheetWidth,
-                                        sheetHeight,
-                                        frameWidth,
-                                        frameHeight,
-                                        pixels),
+                                analysis.opaque(),
+                                analysis.framedAlpha(),
                                 SurfaceSourceProvenance.DERIVED_LOADER),
                         ReadEvidence.DERIVED_PIXELS);
             } catch (TextureImageBudget.ViolationException exception) {
@@ -492,18 +486,113 @@ public final class InitialBlockAtlasResources {
             }
         }
 
-        private static int[] pixels(
-                NativeImage image,
-                int sheetWidth,
-                int sheetHeight,
-                int pixelCount) {
-            int[] pixels = new int[pixelCount];
-            for (int y = 0; y < sheetHeight; y++) {
-                for (int x = 0; x < sheetWidth; x++) {
-                    pixels[y * sheetWidth + x] = image.getPixel(x, y);
+    }
+
+    /**
+     * 中文：把 NativeImage 的 ABGR 批量像素副本原地转换为 straight ARGB，并在同一趟循环中
+     * 完成 opaque 与 framedAlpha 统计；输出与逐像素 {@code ARGB.fromABGR} 后调用
+     * {@code TexturePixelAnalysis.isOpaque/hasFramedAlpha} 逐位等价。
+     *
+     * <p>English: Converts one NativeImage ABGR bulk pixel copy to straight ARGB in place while
+     * computing the opacity and framed-alpha flags in the same pass. The result is bitwise
+     * equivalent to applying {@code ARGB.fromABGR} per pixel followed by
+     * {@code TexturePixelAnalysis.isOpaque} and {@code TexturePixelAnalysis.hasFramedAlpha}.
+     *
+     * @param abgrPixels modifiable ABGR copy from {@link NativeImage#getPixelsABGR()}
+     * @param pixelCount validated sheet pixel count; must equal the array length
+     */
+    static PixelAnalysis analyze(
+            int[] abgrPixels,
+            int sheetWidth,
+            int sheetHeight,
+            int frameWidth,
+            int frameHeight,
+            int pixelCount) {
+        Objects.requireNonNull(abgrPixels, "abgrPixels");
+        if (abgrPixels.length != pixelCount) {
+            throw new IllegalArgumentException(
+                    "ABGR pixel count " + abgrPixels.length
+                            + " does not match " + pixelCount);
+        }
+        boolean opaque = true;
+        boolean trackFramed = frameWidth >= 3
+                && frameHeight >= 3;
+        int borderWidth = trackFramed
+                ? Math.max(
+                        1,
+                        Math.min(
+                                frameWidth,
+                                frameHeight) * 3 / 16)
+                : 0;
+        if (trackFramed
+                && (borderWidth * 2 >= frameWidth
+                        || borderWidth * 2 >= frameHeight)) {
+            trackFramed = false;
+        }
+        long borderPixels = 0;
+        long opaqueBorderPixels = 0;
+        long interiorPixels = 0;
+        long transparentInteriorPixels = 0;
+        for (int y = 0; y < sheetHeight; y++) {
+            int localY = y % frameHeight;
+            for (int x = 0; x < sheetWidth; x++) {
+                int index = y * sheetWidth + x;
+                int abgr = abgrPixels[index];
+                int alpha = abgr >>> 24;
+                if (alpha != 0xFF) {
+                    opaque = false;
+                }
+                abgrPixels[index] = ARGB.fromABGR(abgr);
+                if (!trackFramed) {
+                    continue;
+                }
+                int localX = x % frameWidth;
+                boolean edge = localX < borderWidth
+                        || localX >= frameWidth - borderWidth
+                        || localY < borderWidth
+                        || localY >= frameHeight - borderWidth;
+                if (edge) {
+                    borderPixels++;
+                    if (alpha >= 128) {
+                        opaqueBorderPixels++;
+                    }
+                } else {
+                    interiorPixels++;
+                    if (alpha <= 16) {
+                        transparentInteriorPixels++;
+                    }
                 }
             }
-            return pixels;
+        }
+        boolean framedAlpha = trackFramed
+                && borderPixels > 0
+                && interiorPixels > 0
+                && opaqueBorderPixels * 4 >= borderPixels
+                && transparentInteriorPixels * 5
+                        >= interiorPixels * 3;
+        if (opaque) {
+            framedAlpha = false;
+        }
+        return new PixelAnalysis(
+                abgrPixels,
+                opaque,
+                framedAlpha);
+    }
+
+    /**
+     * 中文：单趟像素分析结果；straightArgb 为入参 ABGR 数组的原地转换结果。
+     *
+     * <p>English: Result of one-pass pixel analysis; {@code straightArgb} is the in-place
+     * conversion of the caller-provided ABGR array.
+     */
+    record PixelAnalysis(
+            int[] straightArgb,
+            boolean opaque,
+            boolean framedAlpha) {
+        PixelAnalysis {
+            Objects.requireNonNull(
+                    straightArgb,
+                    "straightArgb");
         }
     }
 

@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
 import java.util.function.Predicate;
 
@@ -133,6 +135,17 @@ public final class InitialSurfacePreparation {
             return CompletableFuture.completedFuture(
                     new Result(List.of(), List.of(), atlas, List.of()));
         }
+        // 中文：单次 resolveAsync 边界内 blockModels 与 atlas 均已冻结：同一 dependency 恒
+        // 映射同一 BlockModel 实例与同一 atlas 快照，因此以 dependency 为键即可复现
+        // inspectGeometry 的全部输出；该 map 是本调用局部变量，随 resolveAsync 结束即弃，
+        // 绝不跨 reload 复用。
+        // English: Inside one resolveAsync boundary both blockModels and atlas are frozen: the
+        // same dependency always maps to the same BlockModel instance and the same atlas
+        // snapshot, so dependency alone reproduces every inspectGeometry output. The map is
+        // local to this call and is discarded when resolveAsync returns; it is never reused
+        // across reloads.
+        ConcurrentMap<ResourceLocation, ModelGeometryInspector.Result> geometryResults =
+                new ConcurrentHashMap<>();
         int taskCount = Math.min(
                 INSPECTION_PARALLELISM,
                 Math.max(
@@ -152,7 +165,8 @@ public final class InitialSurfacePreparation {
                             from,
                             to,
                             blockModels,
-                            atlas),
+                            atlas,
+                            geometryResults),
                     executor));
         }
         return CompletableFuture
@@ -165,7 +179,8 @@ public final class InitialSurfacePreparation {
             int from,
             int to,
             Map<ResourceLocation, BlockModel> blockModels,
-            Snapshot atlas) {
+            Snapshot atlas,
+            ConcurrentMap<ResourceLocation, ModelGeometryInspector.Result> geometryResults) {
         ArrayList<Surface> surfaces = new ArrayList<>();
         ArrayList<StateCandidate> candidates =
                 new ArrayList<>(to - from);
@@ -177,7 +192,8 @@ public final class InitialSurfacePreparation {
                     entry.state(),
                     entry.models(),
                     blockModels,
-                    atlas);
+                    atlas,
+                    geometryResults);
             surfaces.addAll(inspection.surfaces());
             candidates.add(inspection.candidate());
             inspection.diagnostics().forEach(reason ->
@@ -215,7 +231,8 @@ public final class InitialSurfacePreparation {
             BlockState state,
             List<ResourceLocation> modelLocations,
             Map<ResourceLocation, BlockModel> blockModels,
-            Snapshot atlas) {
+            Snapshot atlas,
+            ConcurrentMap<ResourceLocation, ModelGeometryInspector.Result> geometryResults) {
         ArrayList<String> evidence = new ArrayList<>();
         if (modelLocations.isEmpty()) {
             evidence.add("BLOCKSTATE_ROOT_HAS_NO_MODEL_DEPENDENCIES");
@@ -245,7 +262,8 @@ public final class InitialSurfacePreparation {
             GeometryInspection inspected = inspectGeometry(
                     dependency,
                     model,
-                    atlas);
+                    atlas,
+                    geometryResults);
             drafts.addAll(inspected.drafts());
             evidence.addAll(inspected.diagnostics());
             completeSurfaceEvidence &= inspected.complete();
@@ -292,14 +310,26 @@ public final class InitialSurfacePreparation {
                 inspected.diagnostics());
     }
 
-    private static GeometryInspection inspectGeometry(
+    static GeometryInspection inspectGeometry(
             ResourceLocation dependency,
             BlockModel model,
-            Snapshot atlas) {
-        ModelGeometryInspector.Result inspected = ModelGeometryInspector.inspect(
-                dependency,
-                model,
-                atlas);
+            Snapshot atlas,
+            ConcurrentMap<ResourceLocation, ModelGeometryInspector.Result> geometryResults) {
+        Objects.requireNonNull(geometryResults, "geometryResults");
+        // 中文：同一 dependency 的检查只执行一次；computeIfAbsent 的映射函数捕获的 model
+        // 与 atlas 在该 resolveAsync 边界内恒定（见 resolveAsync 处注释），因此按
+        // dependency 单键缓存即可复现原输出，且并发批次间共享同一不可变 Result。
+        // English: The inspection for one dependency runs exactly once; the model and atlas
+        // captured by the mapping function are constant inside this resolveAsync boundary
+        // (see the comment at resolveAsync), so the single dependency key reproduces the
+        // original output and concurrent batches share one immutable Result.
+        ModelGeometryInspector.Result inspected =
+                geometryResults.computeIfAbsent(
+                        dependency,
+                        key -> ModelGeometryInspector.inspect(
+                                key,
+                                model,
+                                atlas));
         List<Draft> drafts = inspected.faces().stream()
                 .map(face -> new Draft(
                         face.direction(),

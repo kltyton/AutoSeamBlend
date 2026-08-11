@@ -38,16 +38,69 @@ class InferencePolicyTest {
     }
 
     @Test
-    void arbitraryTransparentFramedSurfaceInfersCtm() {
+    void transparentFramedFullBlockSurfaceInfersCtm() {
         InferenceDecision decision = InferencePolicy.decide(
                 ConnectionMethod.AUTO,
-                facts(false, true, false, false, true));
+                facts(false, true, false, true, false));
 
         assertEquals(
                 ConnectionMethod.CTM,
                 decision.resolvedMethod().orElseThrow());
         assertTrue(decision.evidence().contains(
                 "transparent_perimeter_frame_native_ctm"));
+    }
+
+    @Test
+    void opaquePartialSurfaceIsNotAutomaticallyConnected() {
+        InferenceDecision decision = InferencePolicy.decide(
+                ConnectionMethod.AUTO,
+                facts(true, false, false, false, true));
+
+        assertEquals(ConnectionMethod.NONE, decision.resolvedMethod().orElseThrow());
+        assertTrue(decision.evidence().contains("partial_block_not_auto_eligible"));
+    }
+
+    @Test
+    void transparentSelfCullingPartialSurfaceRetainsCtm() {
+        InferenceDecision decision = TransparentSelfConnectionInference.decide(
+                ConnectionMethod.AUTO,
+                facts(false, true, false, false, true),
+                true);
+
+        assertEquals(ConnectionMethod.CTM, decision.resolvedMethod().orElseThrow());
+        assertTrue(decision.evidence().contains(
+                "transparent_self_culling_partial_surface_ctm"));
+    }
+
+    @Test
+    void transparentPartialSurfaceWithoutNativeSelfCullingIsNotConnected() {
+        InferenceDecision decision = TransparentSelfConnectionInference.decide(
+                ConnectionMethod.AUTO,
+                facts(false, true, false, false, true),
+                false);
+
+        assertEquals(ConnectionMethod.NONE, decision.resolvedMethod().orElseThrow());
+        assertTrue(decision.evidence().contains("partial_block_not_auto_eligible"));
+    }
+
+    @Test
+    void explicitMethodStillOverridesPartialGeometry() {
+        InferenceDecision decision = InferencePolicy.decide(
+                ConnectionMethod.CTM,
+                facts(true, false, false, false, true));
+
+        assertEquals(ConnectionMethod.CTM, decision.resolvedMethod().orElseThrow());
+        assertTrue(decision.manual());
+    }
+
+    @Test
+    void topOnlyPartialSurfaceRetainsTopMethod() {
+        InferenceDecision decision = InferencePolicy.decide(
+                ConnectionMethod.AUTO,
+                facts(true, false, false, false, true, true));
+
+        assertEquals(ConnectionMethod.TOP, decision.resolvedMethod().orElseThrow());
+        assertTrue(decision.evidence().contains("top_only_face_domain"));
     }
 
     @Test
@@ -88,6 +141,22 @@ class InferencePolicyTest {
             boolean tinted,
             boolean fullBlock,
             boolean partialGeometry) {
+        return facts(
+                opaque,
+                framed,
+                tinted,
+                fullBlock,
+                partialGeometry,
+                false);
+    }
+
+    private static InferenceFacts facts(
+            boolean opaque,
+            boolean framed,
+            boolean tinted,
+            boolean fullBlock,
+            boolean partialGeometry,
+            boolean topOnly) {
         return new InferenceFacts(
                 FactState.TRUE,
                 FactState.TRUE,
@@ -100,7 +169,7 @@ class InferencePolicyTest {
                 FactState.of(tinted),
                 FactState.of(fullBlock),
                 FactState.of(partialGeometry),
-                FactState.FALSE,
+                FactState.of(topOnly),
                 FactState.FALSE,
                 FactState.TRUE,
                 EnumSet.of(

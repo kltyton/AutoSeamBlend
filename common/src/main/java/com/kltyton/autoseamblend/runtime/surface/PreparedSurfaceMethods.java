@@ -13,6 +13,7 @@ import com.kltyton.autoseamblend.selection.method.ConfiguredMethodPlan;
 import com.kltyton.autoseamblend.selection.method.ConnectionMethod;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,14 +40,17 @@ public final class PreparedSurfaceMethods {
         }
         LinkedHashMap<Key, PreparedMethod> methods =
                 new LinkedHashMap<>();
+        IdentityHashMap<BlockState, Boolean> equalStateBoundaries =
+                new IdentityHashMap<>();
         for (InitialSurfacePreparation.Surface surface
                 : prepared.surfaces()) {
             InferenceDecision decision = SurfaceMethodDecisionPolicy.decide(
                     ConnectionMethod.AUTO,
                     surface.inferenceFacts(),
-                    TransparentSelfConnectionInference
-                            .observesEqualStateBoundary(
-                                    surface.state()));
+                    equalStateBoundaries.computeIfAbsent(
+                            surface.state(),
+                            TransparentSelfConnectionInference
+                                    ::observesEqualStateBoundary));
             PreparedMethod method = new PreparedMethod(
                     surface.inferenceFacts(),
                     decision);
@@ -63,7 +67,9 @@ public final class PreparedSurfaceMethods {
                                     : PreparedMethod.rejected(
                                             surface.inferenceFacts()));
         }
-        completeMissingOppositeMethods(methods);
+        completeMissingOppositeMethods(
+                methods,
+                equalStateBoundaries);
         Snapshot next = new Snapshot(
                 generation,
                 Objects.requireNonNull(
@@ -82,7 +88,9 @@ public final class PreparedSurfaceMethods {
      * only missing opposite keys from a certain CTM decision.
      */
     private static void completeMissingOppositeMethods(
-            LinkedHashMap<Key, PreparedMethod> methods) {
+            LinkedHashMap<Key, PreparedMethod> methods,
+            IdentityHashMap<BlockState, Boolean>
+                    equalStateBoundaries) {
         List.copyOf(methods.entrySet()).forEach(entry -> {
             Key key = entry.getKey();
             PreparedMethod method = entry.getValue();
@@ -91,9 +99,10 @@ public final class PreparedSurfaceMethods {
                             SurfaceFace.valueOf(key.direction().name()),
                             method.decision().resolvedMethod().orElse(ConnectionMethod.NONE),
                             method.facts(),
-                            TransparentSelfConnectionInference
-                                    .observesEqualStateBoundary(
-                                            key.state()));
+                            equalStateBoundaries.computeIfAbsent(
+                                    key.state(),
+                                    TransparentSelfConnectionInference
+                                            ::observesEqualStateBoundary));
             if (opposite.isEmpty()) {
                 return;
             }

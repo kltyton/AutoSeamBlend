@@ -310,16 +310,17 @@ public final class MinecraftSurfaceCatalog {
         SpriteTransparency transparency = SpriteTransparency.of(sprite);
         int width = contents.width();
         int height = contents.height();
-        int frame = contents.getUniqueFrames().count() == 0
+        int[] uniqueFrames = contents.getUniqueFrames().toArray();
+        int frame = uniqueFrames.length == 0
                 ? 0
-                : contents.getUniqueFrames().findFirst()
-                        .orElse(0);
+                : uniqueFrames[0];
+        boolean animated = uniqueFrames.length > 1;
         OverlayCutoutProfile overlayProfile =
                 overlayProfile(contents, frame);
         if (transparency.isOpaque()) {
             return new TextureFacts(
                     transparency,
-                    contents.getUniqueFrames().count() > 1,
+                    animated,
                     false,
                     false,
                     overlayProfile,
@@ -332,7 +333,7 @@ public final class MinecraftSurfaceCatalog {
         if (width < 3 || height < 3) {
             return new TextureFacts(
                     transparency,
-                    contents.getUniqueFrames().count() > 1,
+                    animated,
                     false,
                     fullyTransparent(
                             contents,
@@ -376,7 +377,7 @@ public final class MinecraftSurfaceCatalog {
                 && transparentInterior * 4 >= interior;
         return new TextureFacts(
                 transparency,
-                contents.getUniqueFrames().count() > 1,
+                animated,
                 framed,
                 !visible,
                 overlayProfile,
@@ -655,10 +656,8 @@ public final class MinecraftSurfaceCatalog {
                 Direction nominalFace,
                 TextureAtlasSprite sprite) {
             Block block = state.getBlock();
-            for (BlockState candidateState : states.keySet()) {
-                if (candidateState.getBlock() != block) {
-                    continue;
-                }
+            for (BlockState candidateState
+                    : block.getStateDefinition().getPossibleStates()) {
                 Optional<FaceSurface> found =
                         face(candidateState, lightFace, sprite);
                 if (found.isEmpty()

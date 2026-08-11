@@ -1,4 +1,5 @@
 import net.neoforged.moddevgradle.legacyforge.internal.MinecraftMappings
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 
 plugins {
     id 'multiloader-loader'
@@ -112,12 +113,14 @@ def patchedConstancyRuntimeJar = tasks.register('patchConstancyRuntimeJar', Zip)
 dependencies.add(
         'constancyValidationNamed',
         dependencies.create(files(patchedConstancyRuntimeJar.flatMap { it.archiveFile })))
-def transformedForgeTestEngineArtifacts = providers.provider {
-    configurations.compileClasspath.files.findAll { artifact ->
-        artifact.name.startsWith('ctm-267602-')
-                || artifact.name.startsWith('athena-ctm-')
-    }
-}
+def transformedForgeTestEngineArtifacts = files(
+        configurations.compileClasspath.incoming.artifactView {
+            componentFilter { identifier ->
+                identifier instanceof ModuleComponentIdentifier
+                        && ((identifier.group == 'curse.maven' && identifier.module == 'ctm-267602')
+                        || (identifier.group == 'maven.modrinth' && identifier.module == 'athena-ctm'))
+            }
+        }.files)
 
 def forgeMixinConfigs = [
         'autoseamblend.forge.mixins.json',
@@ -167,6 +170,7 @@ legacyForge {
         }
     }
 }
+transformedForgeTestEngineArtifacts.builtBy(tasks.named('createMinecraftArtifacts'))
 
 // ModDevGradle launches local mods from exploded source-set outputs, so the jar manifest
 // is not consulted by runClient. Register every config here for development, while the
@@ -226,13 +230,13 @@ dependencies {
         exclude '**/*sources*'
     })
     // Tests exercise every optional adapter, but the game validation runtime must contain
-    // only validationEngine. Reuse the already remapped main compile artifacts for tests
-    // instead of promoting CTM/Athena to runClient runtime dependencies.
-    testCompileOnly(files(transformedForgeTestEngineArtifacts))
+    // only validationEngine. Reuse the main compile artifact view so LegacyForge keeps the
+    // official-to-named transform and its producer ordering without eager classpath scans.
+    testCompileOnly(transformedForgeTestEngineArtifacts)
     testRuntimeOnly(fileTree(forgeNamedMods) {
         exclude '**/*sources*'
     })
-    testRuntimeOnly(files(transformedForgeTestEngineArtifacts))
+    testRuntimeOnly(transformedForgeTestEngineArtifacts)
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

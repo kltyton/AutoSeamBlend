@@ -26,7 +26,7 @@ final class WorkbenchCandidateLifecycleContractTest {
                 loaderPackage,
                 "frontend/uilib/controller",
                 className));
-        String contents = Files.readString(source);
+        String contents = Files.readString(source).replace("\r\n", "\n");
 
         assertTrue(contents.contains("synchronizeCandidateAvailability(blockId);"), source.toString());
         assertTrue(contents.contains(

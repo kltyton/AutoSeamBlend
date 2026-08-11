@@ -19,7 +19,7 @@ final class ForgeEntryPointContractTest {
     @Test
     void fzzyConfigUsesTheModdevRemappingConfiguration() throws IOException {
         Path script = projectRoot().resolve("forge/build.gradle");
-        String buildScript = Files.readString(script);
+        String buildScript = readText(script);
 
         assertTrue(
                 buildScript.contains(
@@ -28,7 +28,7 @@ final class ForgeEntryPointContractTest {
 
     @Test
     void validationRuntimeLoadsOnlyTheSelectedConnectedTextureEngine() throws IOException {
-        String buildScript = Files.readString(projectRoot().resolve("forge/build.gradle"));
+        String buildScript = readText(projectRoot().resolve("forge/build.gradle"));
 
         assertTrue(buildScript.contains(
                 "continuity: \"maven.modrinth:continuity:${continuity_forge_id}\""));
@@ -58,7 +58,7 @@ final class ForgeEntryPointContractTest {
 
     @Test
     void officiallyMappedValidationEnginesUseTheNamedRuntimeTransform() throws IOException {
-        String buildScript = Files.readString(projectRoot().resolve("forge/build.gradle"));
+        String buildScript = readText(projectRoot().resolve("forge/build.gradle"));
 
         assertTrue(buildScript.contains(
                 "if (validationEngine == 'ctm' || validationEngine == 'fusion' || validationEngine == 'athena')"));
@@ -67,8 +67,22 @@ final class ForgeEntryPointContractTest {
     }
 
     @Test
+    void forgeTestsUseALazyNamedArtifactViewWithExplicitMappingProducerOrdering()
+            throws IOException {
+        String buildScript = readText(projectRoot().resolve("forge/build.gradle"));
+
+        assertTrue(buildScript.contains("configurations.compileClasspath.incoming.artifactView"));
+        assertTrue(buildScript.contains("componentFilter { identifier ->"));
+        assertTrue(buildScript.contains(
+                "transformedForgeTestEngineArtifacts.builtBy(tasks.named('createMinecraftArtifacts'))"));
+        assertTrue(buildScript.contains("testCompileOnly(transformedForgeTestEngineArtifacts)"));
+        assertTrue(buildScript.contains("testRuntimeOnly(transformedForgeTestEngineArtifacts)"));
+        assertFalse(buildScript.contains("configurations.compileClasspath.files"));
+    }
+
+    @Test
     void fusionUvRemappingUsesThe1201PixelSpaceSpriteApi() throws IOException {
-        String processor = Files.readString(projectRoot().resolve(
+        String processor = readText(projectRoot().resolve(
                 "common/src/main/java/com/kltyton/autoseamblend/compat/fusion/runtime/FusionNativeQuadProcessor.java"));
 
         assertTrue(processor.contains("target.getU(u * 16.0F)"));
@@ -78,9 +92,9 @@ final class ForgeEntryPointContractTest {
     @Test
     void spriteSourceRegistrationUsesTheForgeAccessTransformer() throws IOException {
         Path root = projectRoot();
-        String registration = Files.readString(root.resolve(
+        String registration = readText(root.resolve(
                 "forge/src/main/java/com/kltyton/autoseamblend/forge/runtime/texture/atlas/ForgeGeneratedSpriteSourceRegistration.java"));
-        String accessTransformer = Files.readString(root.resolve(
+        String accessTransformer = readText(root.resolve(
                 "common/src/main/resources/META-INF/accesstransformer.cfg"));
 
         assertTrue(accessTransformer.contains(
@@ -91,7 +105,7 @@ final class ForgeEntryPointContractTest {
 
     @Test
     void spriteSourceTypeIsRegisteredBeforeTheOptionalEngineGate() throws IOException {
-        String entrypoint = Files.readString(projectRoot().resolve(
+        String entrypoint = readText(projectRoot().resolve(
                 "forge/src/main/java/com/kltyton/autoseamblend/forge/bootstrap/ForgeEntryPoint.java"));
 
         int registration = entrypoint.indexOf("ForgeGeneratedSpriteSourceRegistration.register();");
@@ -104,7 +118,7 @@ final class ForgeEntryPointContractTest {
 
     @Test
     void textureStitchPostUsesTheForgeModEventBus() throws IOException {
-        String entrypoint = Files.readString(projectRoot().resolve(
+        String entrypoint = readText(projectRoot().resolve(
                 "forge/src/main/java/com/kltyton/autoseamblend/forge/bootstrap/ForgeEntryPoint.java"));
 
         assertTrue(entrypoint.contains(
@@ -122,8 +136,8 @@ final class ForgeEntryPointContractTest {
         assertTrue(Files.isRegularFile(mixinConfig));
         assertTrue(Files.isRegularFile(refmapFile));
 
-        String config = Files.readString(mixinConfig);
-        String refmap = Files.readString(refmapFile);
+        String config = readText(mixinConfig);
+        String refmap = readText(refmapFile);
         assertTrue(config.contains("\"refmap\": \"autoseamblend.constancy.refmap.json\""));
 
         String[] officialTargets = {
@@ -154,8 +168,8 @@ final class ForgeEntryPointContractTest {
     @Test
     void developmentAndProductionDeclareTheSameForgeMixinConfigurations() throws IOException {
         Path root = projectRoot();
-        String buildScript = Files.readString(root.resolve("forge/build.gradle"));
-        String minecraftMixins = Files.readString(root.resolve(
+        String buildScript = readText(root.resolve("forge/build.gradle"));
+        String minecraftMixins = readText(root.resolve(
                 "forge/src/main/resources/autoseamblend.forge.mixins.json"));
 
         assertTrue(buildScript.contains("annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'"));
@@ -180,7 +194,7 @@ final class ForgeEntryPointContractTest {
 
     @Test
     void connectorValidationRunsThePackagedModJar() throws IOException {
-        String buildScript = Files.readString(projectRoot().resolve("forge/build.gradle"));
+        String buildScript = readText(projectRoot().resolve("forge/build.gradle"));
 
         assertTrue(buildScript.contains("sourceSets.create('packagedValidation')"));
         assertTrue(buildScript.contains("extendsFrom(configurations.runtimeClasspath)"));
@@ -195,7 +209,7 @@ final class ForgeEntryPointContractTest {
         Path metadata = projectRoot().resolve("common/src/main/resources/pack.mcmeta");
 
         assertTrue(Files.isRegularFile(metadata));
-        String contents = Files.readString(metadata);
+        String contents = readText(metadata);
         assertTrue(contents.contains("\"pack_format\": 15"));
         assertTrue(contents.contains("AutoSeamBlend resources"));
     }
@@ -205,5 +219,9 @@ final class ForgeEntryPointContractTest {
         return Files.exists(workingDirectory.resolve("forge/build.gradle"))
                 ? workingDirectory
                 : workingDirectory.getParent();
+    }
+
+    private static String readText(Path path) throws IOException {
+        return Files.readString(path).replace("\r\n", "\n");
     }
 }

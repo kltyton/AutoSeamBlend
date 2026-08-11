@@ -1,0 +1,88 @@
+{
+  "mappings": {
+    "me/pepperbell/continuity/client/mixin/AtlasLoaderMixin": {
+      "m_260886_(Lnet/minecraft/server/packs/resources/ResourceManager;)Ljava/util/List;": "m_260886_(Lnet/minecraft/server/packs/resources/ResourceManager;)Ljava/util/List;"
+    },
+    "me/pepperbell/continuity/client/mixin/BakedModelManagerMixin": {
+      "m_5540_(Lnet/minecraft/server/packs/resources/PreparableReloadListener$PreparationBarrier;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;Lnet/minecraft/util/profiling/ProfilerFiller;Ljava/util/concurrent/Executor;Ljava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;": "m_5540_(Lnet/minecraft/server/packs/resources/PreparableReloadListener$PreparationBarrier;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;Lnet/minecraft/util/profiling/ProfilerFiller;Ljava/util/concurrent/Executor;Ljava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;",
+      "m_245476_(Lnet/minecraft/util/profiling/ProfilerFiller;Ljava/util/Map;Lnet/minecraft/client/resources/model/ModelBakery;)Lnet/minecraft/client/resources/model/ModelManager$ReloadState;": "m_245476_(Lnet/minecraft/util/profiling/ProfilerFiller;Ljava/util/Map;Lnet/minecraft/client/resources/model/ModelBakery;)Lnet/minecraft/client/resources/model/ModelManager$ReloadState;",
+      "m_247616_(Lnet/minecraft/client/resources/model/ModelManager$ReloadState;Lnet/minecraft/util/profiling/ProfilerFiller;)V": "m_247616_(Lnet/minecraft/client/resources/model/ModelManager$ReloadState;Lnet/minecraft/util/profiling/ProfilerFiller;)V"
+    },
+    "me/pepperbell/continuity/client/mixin/BlockModelsMixin": {
+      "m_245515_(Ljava/util/Map;)V": "m_245515_(Ljava/util/Map;)V"
+    },
+    "me/pepperbell/continuity/client/mixin/FallingBlockEntityRendererMixin": {
+      "m_7392_(Lnet/minecraft/world/entity/item/FallingBlockEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V": "m_7392_(Lnet/minecraft/world/entity/item/FallingBlockEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V"
+    },
+    "me/pepperbell/continuity/client/mixin/IdentifierMixin": {
+      "m_135841_(Ljava/lang/String;)Z": "m_135841_(Ljava/lang/String;)Z"
+    },
+    "me/pepperbell/continuity/client/mixin/LifecycledResourceManagerImplMixin": {
+      "m_213713_(Lnet/minecraft/resources/ResourceLocation;)Ljava/util/Optional;": "m_213713_(Lnet/minecraft/resources/ResourceLocation;)Ljava/util/Optional;",
+      "m_213829_(Lnet/minecraft/resources/ResourceLocation;)Ljava/util/List;": "m_213829_(Lnet/minecraft/resources/ResourceLocation;)Ljava/util/List;"
+    },
+    "me/pepperbell/continuity/client/mixin/NamespaceResourceManagerMixin": {
+      "m_10624_(Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/resources/ResourceLocation;": "m_10624_(Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/resources/ResourceLocation;"
+    },
+    "me/pepperbell/continuity/client/mixin/PistonBlockEntityRendererMixin": {
+      "m_6922_(Lnet/minecraft/world/level/block/piston/PistonMovingBlockEntity;FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;II)V": "m_6922_(Lnet/minecraft/world/level/block/piston/PistonMovingBlockEntity;FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;II)V",
+      "Lnet/minecraft/client/renderer/block/ModelBlockRenderer;m_111000_()V": "Lnet/minecraft/client/renderer/block/ModelBlockRenderer;m_111000_()V",
+      "Lnet/minecraft/client/renderer/block/ModelBlockRenderer;m_111077_()V": "Lnet/minecraft/client/renderer/block/ModelBlockRenderer;m_111077_()V"
+    },
+    "me/pepperbell/continuity/client/mixin/ReloadableResourceManagerImplAccessor": {
+      "f_203815_": "f_203815_"
+    },
+    "me/pepperbell/continuity/client/mixin/RenderLayersMixin": {
+      "m_109282_(Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/client/renderer/RenderType;": "m_109282_(Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/client/renderer/RenderType;",
+      "m_109293_(Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/client/renderer/RenderType;": "m_109293_(Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/client/renderer/RenderType;"
+    },
+    "me/pepperbell/continuity/client/mixin/SpriteLoaderMixin": {
+      "m_260881_(Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/resources/ResourceLocation;ILjava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;": "m_260881_(Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/resources/ResourceLocation;ILjava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;",
+      "m_261295_(Ljava/util/List;ILjava/util/concurrent/Executor;)Lnet/minecraft/client/renderer/texture/SpriteLoader$Preparations;": "m_261295_(Ljava/util/List;ILjava/util/concurrent/Executor;)Lnet/minecraft/client/renderer/texture/SpriteLoader$Preparations;"
+    }
+  },
+  "data": {
+    "searge": {
+      "me/pepperbell/continuity/client/mixin/AtlasLoaderMixin": {
+        "m_260886_(Lnet/minecraft/server/packs/resources/ResourceManager;)Ljava/util/List;": "m_260886_(Lnet/minecraft/server/packs/resources/ResourceManager;)Ljava/util/List;"
+      },
+      "me/pepperbell/continuity/client/mixin/BakedModelManagerMixin": {
+        "m_5540_(Lnet/minecraft/server/packs/resources/PreparableReloadListener$PreparationBarrier;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;Lnet/minecraft/util/profiling/ProfilerFiller;Ljava/util/concurrent/Executor;Ljava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;": "m_5540_(Lnet/minecraft/server/packs/resources/PreparableReloadListener$PreparationBarrier;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;Lnet/minecraft/util/profiling/ProfilerFiller;Ljava/util/concurrent/Executor;Ljava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;",
+        "m_245476_(Lnet/minecraft/util/profiling/ProfilerFiller;Ljava/util/Map;Lnet/minecraft/client/resources/model/ModelBakery;)Lnet/minecraft/client/resources/model/ModelManager$ReloadState;": "m_245476_(Lnet/minecraft/util/profiling/ProfilerFiller;Ljava/util/Map;Lnet/minecraft/client/resources/model/ModelBakery;)Lnet/minecraft/client/resources/model/ModelManager$ReloadState;",
+        "m_247616_(Lnet/minecraft/client/resources/model/ModelManager$ReloadState;Lnet/minecraft/util/profiling/ProfilerFiller;)V": "m_247616_(Lnet/minecraft/client/resources/model/ModelManager$ReloadState;Lnet/minecraft/util/profiling/ProfilerFiller;)V"
+      },
+      "me/pepperbell/continuity/client/mixin/BlockModelsMixin": {
+        "m_245515_(Ljava/util/Map;)V": "m_245515_(Ljava/util/Map;)V"
+      },
+      "me/pepperbell/continuity/client/mixin/FallingBlockEntityRendererMixin": {
+        "m_7392_(Lnet/minecraft/world/entity/item/FallingBlockEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V": "m_7392_(Lnet/minecraft/world/entity/item/FallingBlockEntity;FFLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V"
+      },
+      "me/pepperbell/continuity/client/mixin/IdentifierMixin": {
+        "m_135841_(Ljava/lang/String;)Z": "m_135841_(Ljava/lang/String;)Z"
+      },
+      "me/pepperbell/continuity/client/mixin/LifecycledResourceManagerImplMixin": {
+        "m_213713_(Lnet/minecraft/resources/ResourceLocation;)Ljava/util/Optional;": "m_213713_(Lnet/minecraft/resources/ResourceLocation;)Ljava/util/Optional;",
+        "m_213829_(Lnet/minecraft/resources/ResourceLocation;)Ljava/util/List;": "m_213829_(Lnet/minecraft/resources/ResourceLocation;)Ljava/util/List;"
+      },
+      "me/pepperbell/continuity/client/mixin/NamespaceResourceManagerMixin": {
+        "m_10624_(Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/resources/ResourceLocation;": "m_10624_(Lnet/minecraft/resources/ResourceLocation;)Lnet/minecraft/resources/ResourceLocation;"
+      },
+      "me/pepperbell/continuity/client/mixin/PistonBlockEntityRendererMixin": {
+        "m_6922_(Lnet/minecraft/world/level/block/piston/PistonMovingBlockEntity;FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;II)V": "m_6922_(Lnet/minecraft/world/level/block/piston/PistonMovingBlockEntity;FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;II)V",
+        "Lnet/minecraft/client/renderer/block/ModelBlockRenderer;m_111000_()V": "Lnet/minecraft/client/renderer/block/ModelBlockRenderer;m_111000_()V",
+        "Lnet/minecraft/client/renderer/block/ModelBlockRenderer;m_111077_()V": "Lnet/minecraft/client/renderer/block/ModelBlockRenderer;m_111077_()V"
+      },
+      "me/pepperbell/continuity/client/mixin/ReloadableResourceManagerImplAccessor": {
+        "f_203815_": "f_203815_"
+      },
+      "me/pepperbell/continuity/client/mixin/RenderLayersMixin": {
+        "m_109282_(Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/client/renderer/RenderType;": "m_109282_(Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/client/renderer/RenderType;",
+        "m_109293_(Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/client/renderer/RenderType;": "m_109293_(Lnet/minecraft/world/level/block/state/BlockState;)Lnet/minecraft/client/renderer/RenderType;"
+      },
+      "me/pepperbell/continuity/client/mixin/SpriteLoaderMixin": {
+        "m_260881_(Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/resources/ResourceLocation;ILjava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;": "m_260881_(Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/resources/ResourceLocation;ILjava/util/concurrent/Executor;)Ljava/util/concurrent/CompletableFuture;",
+        "m_261295_(Ljava/util/List;ILjava/util/concurrent/Executor;)Lnet/minecraft/client/renderer/texture/SpriteLoader$Preparations;": "m_261295_(Ljava/util/List;ILjava/util/concurrent/Executor;)Lnet/minecraft/client/renderer/texture/SpriteLoader$Preparations;"
+      }
+    }
+  }
+}

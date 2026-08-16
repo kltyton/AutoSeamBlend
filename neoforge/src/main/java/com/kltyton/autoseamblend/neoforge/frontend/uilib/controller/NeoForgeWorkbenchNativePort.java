@@ -19,6 +19,7 @@ import com.kltyton.autoseamblend.frontend.controller.WorkbenchAction;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchCandidateScanPlanner;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchOperationCoordinator;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchSourceConflictReducer;
+import com.kltyton.autoseamblend.frontend.controller.WorkbenchTargetAddition;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchViewReducer;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchViewMappings;
 import com.kltyton.autoseamblend.frontend.uilib.component.property.NativePropertyDocumentActions;
@@ -284,20 +285,22 @@ final class NeoForgeWorkbenchNativePort
                 false,
                 true,
                 true);
-        WorkbenchDocument<ManagedAuthoringDraft> document = frozen.document().add(item);
-        if (document == frozen.document()) {
-            return rejected(frozen, "TARGET_ALREADY_PRESENT");
+        excludeCandidate(blockId);
+        WorkbenchTargetAddition.Outcome<ManagedAuthoringDraft> addition =
+                WorkbenchTargetAddition.reconcile(
+                        frozen.document(),
+                        item,
+                        frozen.availableTargets(),
+                        blockId);
+        if (addition.inserted()) {
+            sources.put(entry.entryKey(), entry);
         }
-        sources.put(entry.entryKey(), entry);
-        List<TargetRowView> available = frozen.availableTargets().stream()
-                .filter(row -> row.receiverBlockId().filter(blockId::equals).isEmpty())
-                .toList();
         return WorkbenchViewReducer.copy(
                 frozen,
-                document,
+                addition.document(),
                 WorkbenchMode.TARGET_LIBRARY,
-                rows(document),
-                available,
+                rows(addition.document()),
+                addition.availableTargets(),
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
@@ -765,6 +768,15 @@ final class NeoForgeWorkbenchNativePort
                 false,
                 true,
                 true));
+    }
+
+    private void excludeCandidate(String blockId) {
+        candidates.removeIf(row -> row.receiverBlockId()
+                .filter(blockId::equals)
+                .isPresent());
+        LinkedHashSet<String> existing = new LinkedHashSet<>(candidateExistingReceivers);
+        existing.add(blockId);
+        candidateExistingReceivers = Set.copyOf(existing);
     }
 
     private CompletionStage<WorkbenchOperationCoordinator.OperationResult<ManagedAuthoringDraft>> save(

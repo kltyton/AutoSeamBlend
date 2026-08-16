@@ -1,5 +1,6 @@
 package com.kltyton.autoseamblend.export.managed;
 
+import com.kltyton.autoseamblend.authoring.storage.ManagedPackMetadata;
 import com.kltyton.autoseamblend.export.api.ExportSink;
 import com.kltyton.autoseamblend.export.io.CanonicalJson;
 import com.kltyton.autoseamblend.export.model.ExportDiagnostic;
@@ -74,6 +75,17 @@ public final class ManagedExportWriter {
             List<ExportDiagnostic> diagnostics) throws IOException {
         if (!rule.bakedBlockers().isEmpty()) {
             diagnostics.add(error("baked_unsupported", String.join("; ", rule.bakedBlockers()), rule));
+            return;
+        }
+        boolean hasBakedDocument = rule.documents().stream()
+                .anyMatch(document -> document.baked().isPresent());
+        if (!"none".equalsIgnoreCase(rule.resolvedMethod())
+                && !rule.tiles().isEmpty()
+                && !hasBakedDocument) {
+            diagnostics.add(error(
+                    "missing_baked_document",
+                    "non-NONE rule has PNG tiles but no baked native document",
+                    rule));
             return;
         }
         for (ManagedExportIr.Document document : rule.documents()) {
@@ -185,11 +197,10 @@ public final class ManagedExportWriter {
             ManagedExportIr ir,
             ManagedExportProfile profile,
             ExportSink sink) throws IOException {
-        Map<String, Object> pack = new LinkedHashMap<>();
-        pack.put("min_format", List.of(84, 0));
-        pack.put("max_format", 84);
-        pack.put("description", "AutoSeamBlend " + profile.serialized() + " export");
-        sink.writeUtf8("pack.mcmeta", CanonicalJson.stringify(Map.of("pack", pack)));
+        sink.writeUtf8(
+                "pack.mcmeta",
+                ManagedPackMetadata.stringify(
+                        "AutoSeamBlend " + profile.serialized() + " export"));
     }
 
     private static String report(ManagedExportIr ir, ManagedExportProfile profile) {

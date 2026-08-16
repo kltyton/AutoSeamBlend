@@ -17,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
 
 /** 中文：暂存一个完整配置档，并仅在通过取消、错误和过期门禁后发布。 / English: Stages one complete profile and publishes only after cancellation/error/staleness gates pass. */
 public final class ManagedExportDispatcher {
@@ -281,11 +282,23 @@ public final class ManagedExportDispatcher {
         private final List<ExportDiagnostic> diagnostics;
 
         public ExportRejectedException(List<ExportDiagnostic> diagnostics) {
-            super("managed export rejected by error diagnostics");
+            super(message(diagnostics));
             this.diagnostics = List.copyOf(diagnostics);
         }
 
         public List<ExportDiagnostic> diagnostics() { return diagnostics; }
+
+        private static String message(List<ExportDiagnostic> diagnostics) {
+            String details = diagnostics.stream()
+                    .filter(value -> value.level() == ExportDiagnostic.Level.ERROR)
+                    .map(value -> value.code() + '[' + value.groupId() + ']')
+                    .distinct()
+                    .sorted()
+                    .collect(Collectors.joining(", "));
+            return details.isEmpty()
+                    ? "managed export rejected by error diagnostics"
+                    : "managed export rejected by error diagnostics: " + details;
+        }
     }
 
     public static final class StaleGenerationException extends IOException {

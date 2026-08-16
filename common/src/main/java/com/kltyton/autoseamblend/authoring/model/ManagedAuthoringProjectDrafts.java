@@ -353,12 +353,23 @@ public final class ManagedAuthoringProjectDrafts {
         if (draft.pane() != (block instanceof IronBarsBlock)) {
             throw new IllegalArgumentException("PANE_TARGET_MISMATCH");
         }
-        return createRule(
-                draft,
-                MinecraftModelTextureBindings.resolve(
+        List<String> sourceTextureKeys = MinecraftModelTextureBindings.resolve(
+                resources,
+                draft.originalModelId(),
+                draft.sourceTextureId());
+        if (!sourceTextureKeys.isEmpty()) {
+            return createRule(draft, draft.originalModelId(), sourceTextureKeys);
+        }
+        Optional<BlockstateModelFallback.Selected> selected =
+                BlockstateModelFallback.select(
                         resources,
-                        draft.originalModelId(),
-                        draft.sourceTextureId()));
+                        draft.targetBlockId(),
+                        draft.sourceTextureId());
+        if (selected.isPresent()) {
+            BlockstateModelFallback.Selected fallback = selected.orElseThrow();
+            return createRule(draft, fallback.modelId(), fallback.sourceTextureKeys());
+        }
+        return createRule(draft, draft.originalModelId(), List.of());
     }
 
     public static Optional<ConnectionMethod> resolvedAuto(Block block) {
@@ -452,6 +463,21 @@ public final class ManagedAuthoringProjectDrafts {
                 resolvedMethod,
                 compatibility,
                 pane,
+                sourceTextureKeys);
+    }
+
+    private static ManagedAuthoringRule createRule(
+            ManagedAuthoringDraft draft,
+            String originalModelId,
+            List<String> sourceTextureKeys) {
+        return new ManagedAuthoringRule(
+                draft.targetBlockId(),
+                draft.sourceTextureId(),
+                originalModelId,
+                draft.requestedMethod(),
+                draft.resolvedMethod(),
+                draft.compatibility(),
+                draft.pane(),
                 sourceTextureKeys);
     }
 

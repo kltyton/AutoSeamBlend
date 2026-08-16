@@ -281,11 +281,35 @@ public final class ManagedExportDispatcher {
         private final List<ExportDiagnostic> diagnostics;
 
         public ExportRejectedException(List<ExportDiagnostic> diagnostics) {
-            super("managed export rejected by error diagnostics");
+            super(message(diagnostics));
             this.diagnostics = List.copyOf(diagnostics);
         }
 
         public List<ExportDiagnostic> diagnostics() { return diagnostics; }
+
+        private static String message(List<ExportDiagnostic> diagnostics) {
+            Objects.requireNonNull(diagnostics, "diagnostics");
+            List<ExportDiagnostic> errors = diagnostics.stream()
+                    .filter(value -> value.level() == ExportDiagnostic.Level.ERROR)
+                    .sorted()
+                    .toList();
+            if (errors.isEmpty()) {
+                return "managed export rejected by error diagnostics";
+            }
+            StringBuilder output = new StringBuilder(
+                    "managed export rejected: ");
+            for (int index = 0; index < errors.size(); index++) {
+                if (index > 0) {
+                    output.append("; ");
+                }
+                ExportDiagnostic diagnostic = errors.get(index);
+                output.append(diagnostic.code())
+                        .append('(')
+                        .append(diagnostic.groupId())
+                        .append(')');
+            }
+            return output.toString();
+        }
     }
 
     public static final class StaleGenerationException extends IOException {

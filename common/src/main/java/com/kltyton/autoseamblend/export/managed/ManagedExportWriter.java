@@ -76,6 +76,18 @@ public final class ManagedExportWriter {
             diagnostics.add(error("baked_unsupported", String.join("; ", rule.bakedBlockers()), rule));
             return;
         }
+        boolean hasBakedDocument = rule.documents().stream()
+                .anyMatch(document -> document.baked().isPresent());
+        if (!"none".equalsIgnoreCase(rule.resolvedMethod())
+                && !rule.tiles().isEmpty()
+                && !hasBakedDocument) {
+            diagnostics.add(error(
+                    "missing_baked_document",
+                    "non-NONE rule publishes PNG tile(s) but has zero baked native documents: "
+                            + rule.selectorIdentity(),
+                    rule));
+            return;
+        }
         for (ManagedExportIr.Document document : rule.documents()) {
             if (document.baked().isEmpty()) continue;
             ManagedExportIr.Artifact artifact =

@@ -19,6 +19,7 @@ import com.kltyton.autoseamblend.frontend.controller.WorkbenchAction;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchCandidateScanPlanner;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchOperationCoordinator;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchSourceConflictReducer;
+import com.kltyton.autoseamblend.frontend.controller.WorkbenchTargetAddition;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchViewReducer;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchViewMappings;
 import com.kltyton.autoseamblend.frontend.uilib.component.property.NativePropertyDocumentActions;
@@ -285,21 +286,22 @@ final class NeoForgeWorkbenchNativePort
                 false,
                 true,
                 true);
-        WorkbenchDocument<ManagedAuthoringDraft> document = frozen.document().add(item);
-        if (document == frozen.document()) {
-            return rejected(frozen, "TARGET_ALREADY_PRESENT");
+        synchronizeCandidateAvailability(blockId);
+        WorkbenchTargetAddition.Result<ManagedAuthoringDraft> reconciled =
+                WorkbenchTargetAddition.reconcile(
+                        frozen.document(),
+                        item,
+                        frozen.availableTargets(),
+                        blockId);
+        if (reconciled.inserted()) {
+            sources.put(entry.entryKey(), entry);
         }
-        sources.put(entry.entryKey(), entry);
-        List<TargetRowView> available =
-                WorkbenchViewMappings.availableCandidates(
-                        rows(document),
-                        frozen.availableTargets());
         return WorkbenchViewReducer.copy(
                 frozen,
-                document,
+                reconciled.document(),
                 WorkbenchMode.TARGET_LIBRARY,
-                rows(document),
-                available,
+                rows(reconciled.document()),
+                reconciled.availableTargets(),
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
@@ -307,6 +309,19 @@ final class NeoForgeWorkbenchNativePort
                 Component.translatable("gui.autoseamblend.status.target_added"),
                 true,
                 false);
+    }
+
+    private void synchronizeCandidateAvailability(String blockId) {
+        candidates.removeIf(row -> row.receiverBlockId()
+                .filter(blockId::equals)
+                .isPresent());
+        if (planner == null || candidateExistingReceivers.contains(blockId)) {
+            return;
+        }
+        LinkedHashSet<String> existing =
+                new LinkedHashSet<>(candidateExistingReceivers);
+        existing.add(blockId);
+        candidateExistingReceivers = Set.copyOf(existing);
     }
 
     private WorkbenchViewModel<ManagedAuthoringDraft> showMode(

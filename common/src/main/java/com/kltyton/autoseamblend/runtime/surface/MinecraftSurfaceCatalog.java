@@ -112,11 +112,16 @@ public final class MinecraftSurfaceCatalog {
         EnumMap<Direction, LinkedHashMap<TextureAtlasSprite, FaceDraft>> drafts =
                 new EnumMap<>(Direction.class);
         ArrayList<BakedQuad> allQuads = new ArrayList<>();
-        for (BlockStateModelPart part : parts) {
-            for (Direction cullFace : Direction.values()) {
-                collect(part.getQuads(cullFace), drafts, allQuads);
+        try {
+            for (BlockStateModelPart part : parts) {
+                for (Direction cullFace : Direction.values()) {
+                    collect(part.getQuads(cullFace), drafts, allQuads);
+                }
+                collect(part.getQuads(null), drafts, allQuads);
             }
-            collect(part.getQuads(null), drafts, allQuads);
+        } catch (RuntimeException exception) {
+            diagnostics.add("MODEL_QUADS_REJECTED:" + state + ':' + exception.getClass().getSimpleName());
+            return Optional.empty();
         }
         if (allQuads.isEmpty()) {
             diagnostics.add("MODEL_QUADS_EMPTY:" + state);

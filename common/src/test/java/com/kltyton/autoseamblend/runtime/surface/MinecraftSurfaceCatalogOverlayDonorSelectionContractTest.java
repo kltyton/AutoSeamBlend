@@ -2,6 +2,7 @@ package com.kltyton.autoseamblend.runtime.surface;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.kltyton.autoseamblend.inference.ConnectionAxis;
 import com.kltyton.autoseamblend.inference.InferenceFacts;
@@ -26,6 +27,7 @@ import net.minecraft.server.Bootstrap;
 import net.minecraft.server.packs.resources.ResourceMetadata;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -185,6 +187,28 @@ class MinecraftSurfaceCatalogOverlayDonorSelectionContractTest {
                 overlay.facts().alphaOpaque(),
                 selected.facts().alphaOpaque(),
                 "selection keeps the overlay alpha-opaque fact");
+    }
+
+    @Test
+    void completelyAbsentStateCannotBorrowSiblingSurface() {
+        BlockState absentState = Blocks.GLASS_PANE.defaultBlockState();
+        BlockState siblingState = absentState.setValue(BlockStateProperties.NORTH, true);
+        MinecraftSurfaceCatalog.FaceSurface siblingFace = face(TEST_BASE, -1, true);
+        MinecraftSurfaceCatalog.Snapshot snapshot = new MinecraftSurfaceCatalog.Snapshot(
+                1L,
+                Map.of(
+                        siblingState,
+                        new MinecraftSurfaceCatalog.StateSurface(
+                                siblingState,
+                                Map.of(Direction.NORTH, List.of(siblingFace)))),
+                List.of());
+
+        assertTrue(snapshot.face(
+                        absentState,
+                        Direction.NORTH,
+                        Direction.NORTH,
+                        siblingFace.sprite())
+                .isEmpty());
     }
 
     private static MinecraftSurfaceCatalog.FaceSurface face(

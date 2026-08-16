@@ -181,16 +181,21 @@ public final class MinecraftSurfaceCatalog {
                 new EnumMap<>(Direction.class);
         ArrayList<BakedQuad> allQuads = new ArrayList<>();
         RandomSource random = RandomSource.create(0L);
-        for (Direction cullFace : Direction.values()) {
+        try {
+            for (Direction cullFace : Direction.values()) {
+                collect(
+                        model.getQuads(state, cullFace, random),
+                        drafts,
+                        allQuads);
+            }
             collect(
-                    model.getQuads(state, cullFace, random),
+                    model.getQuads(state, null, random),
                     drafts,
                     allQuads);
+        } catch (RuntimeException exception) {
+            diagnostics.add("MODEL_QUADS_REJECTED:" + state + ':' + exception.getClass().getSimpleName());
+            return Optional.empty();
         }
-        collect(
-                model.getQuads(state, null, random),
-                drafts,
-                allQuads);
         if (allQuads.isEmpty()) {
             diagnostics.add("MODEL_QUADS_EMPTY:" + state);
             return Optional.empty();
@@ -629,7 +634,7 @@ public final class MinecraftSurfaceCatalog {
                     && nominalFace != lightFace) {
                 resolved = face(state, nominalFace, sprite);
             }
-            if (resolved.isEmpty()) {
+            if (resolved.isEmpty() && states.containsKey(state)) {
                 resolved = faceAcrossStates(
                         state,
                         lightFace,

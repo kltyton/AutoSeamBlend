@@ -19,6 +19,7 @@ import com.kltyton.autoseamblend.frontend.controller.WorkbenchAction;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchCandidateScanPlanner;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchOperationCoordinator;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchSourceConflictReducer;
+import com.kltyton.autoseamblend.frontend.controller.WorkbenchTargetAddition;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchViewReducer;
 import com.kltyton.autoseamblend.frontend.controller.WorkbenchViewMappings;
 import com.kltyton.autoseamblend.frontend.uilib.component.property.NativePropertyDocumentActions;
@@ -284,21 +285,22 @@ final class ForgeWorkbenchNativePort
                 false,
                 true,
                 true);
-        WorkbenchDocument<ManagedAuthoringDraft> document = frozen.document().add(item);
-        if (document == frozen.document()) {
-            return rejected(frozen, "TARGET_ALREADY_PRESENT");
-        }
-        sources.put(entry.entryKey(), entry);
         synchronizeCandidateAvailability(blockId);
-        List<TargetRowView> available = frozen.availableTargets().stream()
-                .filter(row -> row.receiverBlockId().filter(blockId::equals).isEmpty())
-                .toList();
+        WorkbenchTargetAddition.Result<ManagedAuthoringDraft> reconciled =
+                WorkbenchTargetAddition.reconcile(
+                        frozen.document(),
+                        item,
+                        frozen.availableTargets(),
+                        blockId);
+        if (reconciled.inserted()) {
+            sources.put(entry.entryKey(), entry);
+        }
         return WorkbenchViewReducer.copy(
                 frozen,
-                document,
+                reconciled.document(),
                 WorkbenchMode.TARGET_LIBRARY,
-                rows(document),
-                available,
+                rows(reconciled.document()),
+                reconciled.availableTargets(),
                 Optional.empty(),
                 Optional.empty(),
                 Optional.empty(),
